@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Maksiulo — Creator & Developer</title>
+  <meta name="description" content="Maksiulo — создатель цифровых продуктов, игровых роликов и веб-интерфейсов. Портфолио, навыки, проекты и контакты." />
+  <meta name="theme-color" content="#07070c" />
+  <meta property="og:title" content="Maksiulo — Creator & Developer" />
+  <meta property="og:description" content="Сайты, приложения и вертикальные ролики, которые выглядят как игра." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c5cff'/%3E%3Cstop offset='1' stop-color='%2300e0c6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M16 46V18h6l10 14 10-14h6v28h-7V30l-9 12-9-12v16z' fill='white'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="loader" id="loader" aria-hidden="true">
+    <div class="loader__logo">M</div>
+    <div class="loader__bar"><span id="loaderBar"></span></div>
+    <div class="loader__text mono">ЗАГРУЗКА МИРА… <span id="loaderPct">0</span>%</div>
+  </div>
+
+  <canvas id="bg" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="cursor" id="cursor" aria-hidden="true"></div>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+
+  <header class="nav" id="nav">
+    <a href="#top" class="nav__logo" aria-label="На главную"><span class="logo-mark">M</span>Maksiulo</a>
+    <nav class="nav__links" id="navLinks">
+      <a href="#about">Обо мне</a>
+      <a href="#skills">Скиллы</a>
+      <a href="#work">Проекты</a>
+      <a href="#process">Процесс</a>
+      <a href="#contact">Контакты</a>
+    </nav>
+    <div class="nav__actions">
+      <button class="icon-btn" id="themeToggle" aria-label="Сменить тему">
+        <svg class="i-sun" viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24" width="18" height="18"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      </button>
+      <a href="#contact" class="btn btn--sm btn--primary magnetic">Связаться</a>
+      <button class="burger" id="burger" aria-label="Меню" aria-expanded="false"><span></span><span></span></button>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hud hud--tl mono reveal">
+        <span class="dot"></span> ONLINE · GDAŃSK · <span id="clock">--:--</span>
+      </div>
+      <div class="hud hud--tr mono reveal">
+        <span>LVL 99</span>
+        <div class="hp"><span></span></div>
+        <span>XP 12 840</span>
+      </div>
+
+      <p class="eyebrow reveal">ЗАДАНИЕ: создать что-то легендарное</p>
+      <h1 class="hero__title">
+        <span class="line"><span class="word">Делаю</span> <span class="word">цифровые</span></span>
+        <span class="line"><span class="word grad">миры,</span> <span class="word">которые</span></span>
+        <span class="line"><span class="word">хочется</span> <span class="word typed" id="typed">пройти</span></span>
+      </h1>
+      <p class="hero__sub reveal">Сайты, приложения и вертикальные ролики, которые выглядят как игра. Дизайн, код и сторителлинг — от идеи до релиза.</p>
+      <div class="hero__cta reveal">
+        <a href="#work" class="btn btn--primary btn--lg magnetic">Смотреть проекты
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="https://github.com/Maksiulo" target="_blank" rel="noopener" class="btn btn--ghost btn--lg magnetic">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z"/></svg>
+          GitHub
+        </a>
+      </div>
+
+      <div class="hero__stats reveal">
+        <div class="stat"><b class="count" data-to="48">0</b><span>проектов</span></div>
+        <div class="stat"><b class="count" data-to="2.4" data-dec="1" data-suffix="M">0</b><span>просмотров роликов</span></div>
+        <div class="stat"><b class="count" data-to="100" data-suffix="%">0</b><span>вовлечённости</span></div>
+      </div>
+
+      <div class="scroll-hint mono" aria-hidden="true"><span></span>SCROLL</div>
+    </section>
+
+    <!-- MARQUEE -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee__track">
+        <span>Web Design</span><i>✦</i><span>Frontend</span><i>✦</i><span>Motion</span><i>✦</i><span>Game UI</span><i>✦</i><span>Reels</span><i>✦</i><span>3D</span><i>✦</i><span>AI Tools</span><i>✦</i><span>Storytelling</span><i>✦</i>
+        <span>Web Design</span><i>✦</i><span>Frontend</span><i>✦</i><span>Motion</span><i>✦</i><span>Game UI</span><i>✦</i><span>Reels</span><i>✦</i><span>3D</span><i>✦</i><span>AI Tools</span><i>✦</i><span>Storytelling</span><i>✦</i>
+      </div>
+    </div>
+
+    <!-- ABOUT -->
+    <section class="section about" id="about">
+      <div class="section__head">
+        <span class="tag mono">01 / Обо мне</span>
+        <h2 class="reveal">Не просто красиво.<br /><span class="grad">Красиво и работает.</span></h2>
+      </div>
+      <div class="about__grid">
+        <div class="card profile tilt reveal">
+          <div class="profile__avatar">
+            <div class="avatar-ring"></div>
+            <span>M</span>
+          </div>
+          <div class="profile__meta">
+            <h3>Maksiulo</h3>
+            <p class="muted">Creator · Developer · Storyteller</p>
+            <div class="chips">
+              <span class="chip">🇵🇱 Gdańsk</span>
+              <span class="chip">🎮 Game-style</span>
+              <span class="chip">⚡ Быстрый старт</span>
+            </div>
+          </div>
+          <div class="dialog">
+            <div class="dialog__name mono">MAKSIULO</div>
+            <p id="dialogText">Привет! Я превращаю идеи в продукты, которые цепляют с первой секунды.</p>
+            <button class="dialog__next mono" id="dialogNext">ДАЛЕЕ ▸</button>
+          </div>
+        </div>
+        <div class="about__text reveal">
+          <p class="lead">Я собираю проекты на стыке дизайна, кода и сторителлинга. Мне важно, чтобы у пользователя было ощущение игры: понятная цель, мгновенный отклик, награда в конце.</p>
+          <p class="muted">Начинаю с сильного хука, продумываю путь пользователя как уровень, а затем полирую детали — анимации, звук, микро-взаимодействия. Результат — сайты и ролики, которые досматривают и запоминают.</p>
+          <ul class="checklist">
+            <li>Адаптив под любые экраны, от телефона до 4K</li>
+            <li>Скорость загрузки и доступность (a11y) из коробки</li>
+            <li>Анимации 60 fps без тяжёлых фреймворков</li>
+            <li>Тёмная и светлая тема, SEO-разметка</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SKILLS -->
+    <section class="section" id="skills">
+      <div class="section__head">
+        <span class="tag mono">02 / Скиллы</span>
+        <h2 class="reveal">Дерево <span class="grad">навыков</span></h2>
+        <p class="muted reveal">Прокачано до максимума. Наведи на карточку.</p>
+      </div>
+      <div class="bento">
+        <article class="card skill skill--wide tilt reveal" data-glow>
+          <div class="skill__icon">🎨</div>
+          <h3>UI / UX дизайн</h3>
+          <p class="muted">Дизайн-системы, интерфейсы, прототипы. Чистая типографика и выверенные отступы.</p>
+          <div class="bar"><span style="--v:96%"></span></div>
+          <div class="bar__meta mono"><span>Figma · Design Systems</span><span>96</span></div>
+        </article>
+        <article class="card skill tilt reveal" data-glow>
+          <div class="skill__icon">⚡</div>
+          <h3>Frontend</h3>
+          <p class="muted">HTML, CSS, JavaScript, React.</p>
+          <div class="bar"><span style="--v:92%"></span></div>
+          <div class="bar__meta mono"><span>JS · TS · React</span><span>92</span></div>
+        </article>
+        <article class="card skill tilt reveal" data-glow>
+          <div class="skill__icon">🎬</div>
+          <h3>Motion & Reels</h3>
+          <p class="muted">Вертикальные ролики в стиле игры.</p>
+          <div class="bar"><span style="--v:94%"></span></div>
+          <div class="bar__meta mono"><span>9:16 · 60fps</span><span>94</span></div>
+        </article>
+        <article class="card skill tilt reveal" data-glow>
+          <div class="skill__icon">🧊</div>
+          <h3>3D & Game UI</h3>
+          <p class="muted">HUD, мини-карты, low-poly миры.</p>
+          <div class="bar"><span style="--v:85%"></span></div>
+          <div class="bar__meta mono"><span>Blender · WebGL</span><span>85</span></div>
+        </article>
+        <article class="card skill tilt reveal" data-glow>
+          <div class="skill__icon">🤖</div>
+          <h3>AI-инструменты</h3>
+          <p class="muted">Голос, сценарии, автоматизация.</p>
+          <div class="bar"><span style="--v:90%"></span></div>
+          <div class="bar__meta mono"><span>Claude · ElevenLabs</span><span>90</span></div>
+        </article>
+        <article class="card skill skill--wide tilt reveal" data-glow>
+          <div class="skill__icon">✍️</div>
+          <h3>Сторителлинг</h3>
+          <p class="muted">Хук в первые 2 секунды, нарастание, неожиданный поворот и панчлайн. Сценарии, которые досматривают до конца.</p>
+          <div class="bar"><span style="--v:98%"></span></div>
+          <div class="bar__meta mono"><span>Script · Hook · Punchline</span><span>98</span></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- WORK -->
+    <section class="section" id="work">
+      <div class="section__head">
+        <span class="tag mono">03 / Проекты</span>
+        <h2 class="reveal">Пройденные <span class="grad">уровни</span></h2>
+      </div>
+      <div class="filters reveal" role="tablist">
+        <button class="filter is-active" data-filter="all">Все</button>
+        <button class="filter" data-filter="web">Веб</button>
+        <button class="filter" data-filter="app">Приложения</button>
+        <button class="filter" data-filter="video">Ролики</button>
+      </div>
+      <div class="projects">
+        <article class="project tilt reveal" data-cat="web">
+          <div class="project__art art-1"><div class="art-ui"><span></span><span></span><span></span></div></div>
+          <div class="project__body">
+            <div class="project__top"><span class="chip">Веб</span><span class="mono muted">2026</span></div>
+            <h3>Nova Studio</h3>
+            <p class="muted">Лендинг креативного агентства с 3D-героем и плавным скроллом.</p>
+          </div>
+        </article>
+        <article class="project tilt reveal" data-cat="video">
+          <div class="project__art art-2"><div class="art-quest mono">ЗАДАНИЕ ВЫПОЛНЕНО</div></div>
+          <div class="project__body">
+            <div class="project__top"><span class="chip">Ролик</span><span class="mono muted">2026</span></div>
+            <h3>Что если ты в Гданьске…</h3>
+            <p class="muted">Серия вертикальных роликов в стиле GTA-like игры с HUD и RPG-диалогами.</p>
+          </div>
+        </article>
+        <article class="project tilt reveal" data-cat="app">
+          <div class="project__art art-3"><div class="art-phone"><i></i><i></i><i></i></div></div>
+          <div class="project__body">
+            <div class="project__top"><span class="chip">Приложение</span><span class="mono muted">2025</span></div>
+            <h3>Questify</h3>
+            <p class="muted">Трекер привычек, где каждый день — это квест с наградой и уровнями.</p>
+          </div>
+        </article>
+        <article class="project tilt reveal" data-cat="web">
+          <div class="project__art art-4"><div class="art-chart"><i style="--h:40%"></i><i style="--h:70%"></i><i style="--h:55%"></i><i style="--h:90%"></i><i style="--h:65%"></i></div></div>
+          <div class="project__body">
+            <div class="project__top"><span class="chip">Веб</span><span class="mono muted">2025</span></div>
+            <h3>Pulse Dashboard</h3>
+            <p class="muted">Аналитическая панель с живыми графиками и тёмной темой.</p>
+          </div>
+        </article>
+        <article class="project tilt reveal" data-cat="video">
+          <div class="project__art art-5"><div class="art-money mono">−40 zł</div></div>
+          <div class="project__body">
+            <div class="project__top"><span class="chip">Ролик</span><span class="mono muted">2025</span></div>
+            <h3>Путь до Мака</h3>
+            <p class="muted">Комедийная мини-история с монетами, HP и концовкой «ПОЗДРАВЛЯЮ!».</p>
+          </div>
+        </article>
+        <article class="project tilt reveal" data-cat="app">
+          <div class="project__art art-6"><div class="art-orb"></div></div>
+          <div class="project__body">
+            <div class="project__top"><span class="chip">Приложение</span><span class="mono muted">2025</span></div>
+            <h3>Voice Buddy</h3>
+            <p class="muted">AI-ассистент с живым эмоциональным голосом и мгновенными ответами.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- PROCESS -->
+    <section class="section" id="process">
+      <div class="section__head">
+        <span class="tag mono">04 / Процесс</span>
+        <h2 class="reveal">Как проходим <span class="grad">игру</span></h2>
+      </div>
+      <ol class="steps">
+        <li class="step reveal"><span class="step__n mono">01</span><h3>Брифинг</h3><p class="muted">Разбираем цель, аудиторию и то, что должно зацепить с первой секунды.</p></li>
+        <li class="step reveal"><span class="step__n mono">02</span><h3>Сценарий и дизайн</h3><p class="muted">Строю путь пользователя как уровень: хук, нарастание, награда.</p></li>
+        <li class="step reveal"><span class="step__n mono">03</span><h3>Разработка</h3><p class="muted">Чистый быстрый код, анимации, адаптив и доступность.</p></li>
+        <li class="step reveal"><span class="step__n mono">04</span><h3>Релиз 🏆</h3><p class="muted">Запуск, аналитика и полировка. ЗАДАНИЕ ВЫПОЛНЕНО.</p></li>
+      </ol>
+    </section>
+
+    <!-- PRICING -->
+    <section class="section" id="pricing">
+      <div class="section__head">
+        <span class="tag mono">05 / Пакеты</span>
+        <h2 class="reveal">Выбери свой <span class="grad">режим</span></h2>
+      </div>
+      <div class="pricing">
+        <div class="card plan reveal">
+          <span class="mono muted">EASY</span>
+          <h3>Лендинг</h3>
+          <div class="plan__price">$350</div>
+          <ul class="checklist"><li>1 страница</li><li>Адаптив</li><li>Анимации</li></ul>
+          <a href="#contact" class="btn btn--ghost">Выбрать</a>
+        </div>
+        <div class="card plan plan--hot reveal">
+          <span class="badge mono">ХИТ</span>
+          <span class="mono muted">NORMAL</span>
+          <h3>Сайт под ключ</h3>
+          <div class="plan__price">$1 000</div>
+          <ul class="checklist"><li>До 6 разделов</li><li>Уникальный дизайн</li><li>Тёмная/светлая тема</li><li>SEO и скорость</li></ul>
+          <a href="#contact" class="btn btn--primary magnetic">Выбрать</a>
+        </div>
+        <div class="card plan reveal">
+          <span class="mono muted">HARDCORE</span>
+          <h3>Приложение</h3>
+          <div class="plan__price">от $2 500</div>
+          <ul class="checklist"><li>Web / PWA</li><li>Бэкенд и API</li><li>Поддержка</li></ul>
+          <a href="#contact" class="btn btn--ghost">Выбрать</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section class="section contact" id="contact">
+      <div class="card contact__card reveal">
+        <div class="contact__left">
+          <span class="tag mono">06 / Контакты</span>
+          <h2>Готов начать <span class="grad">новую игру?</span></h2>
+          <p class="muted">Напиши пару слов об идее — отвечу в течение дня.</p>
+          <div class="socials">
+            <a href="https://github.com/Maksiulo" target="_blank" rel="noopener" class="social magnetic">GitHub ↗</a>
+            <a href="#" class="social magnetic">Telegram ↗</a>
+            <a href="#" class="social magnetic">Instagram ↗</a>
+          </div>
+        </div>
+        <form class="form" id="form" novalidate>
+          <label class="field"><input type="text" name="name" required placeholder=" " /><span>Имя</span></label>
+          <label class="field"><input type="email" name="email" required placeholder=" " /><span>Email</span></label>
+          <label class="field"><textarea name="msg" rows="4" required placeholder=" "></textarea><span>Расскажи об идее</span></label>
+          <button class="btn btn--primary btn--lg magnetic" type="submit">Отправить
+            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <p class="form__msg mono" id="formMsg" role="status"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__big" aria-hidden="true">MAKSIULO</div>
+    <div class="footer__row">
+      <span class="muted">© <span id="year"></span> Maksiulo. Сделано с ❤️ и кодом.</span>
+      <a href="#top" class="muted">Наверх ↑</a>
+    </div>
+  </footer>
+
+  <div class="toast mono" id="toast">ЗАДАНИЕ ВЫПОЛНЕНО ✓</div>
+
+  <script src="script.js"></script>
+</body>
+</html>
