@@ -255,3 +255,15 @@ svg{display:block}
 .sheet{visibility:hidden;transition:visibility 0s .45s}
 .sheet.open{visibility:visible;transition:none}
 .reveal__inner>.eyebrow{margin-bottom:18px}
+
+/* production additions */
+.badge{position:absolute;z-index:3;left:8px;top:8px;padding:4px 8px;border-radius:9px;font-size:11px;font-weight:800;background:rgba(6,6,11,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid var(--line)}
+.field{display:flex;align-items:center;gap:10px;height:58px;padding:0 18px;border-radius:18px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-size:22px}
+.field input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ink);font:800 22px Unbounded,Manrope,sans-serif}
+.field:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px rgba(139,108,255,.2)}
+.lvl{font:inherit;color:inherit;border:1px solid var(--line)}
+.lvl.can{border-color:rgba(38,227,200,.6);box-shadow:0 0 24px -6px rgba(38,227,200,.7)}
+.lvl.can .lvl__r{color:var(--accent2)}
+.tile[data-go]{cursor:pointer}
+.field input::-webkit-outer-spin-button,.field input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.field input{-moz-appearance:textfield;appearance:textfield}

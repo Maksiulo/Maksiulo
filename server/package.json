@@ -1,0 +1,15 @@
+{
+  "name": "glint-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Glint — бэкенд Telegram Mini App: Stars-платежи, коллекции, маркет, бот",
+  "main": "index.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test/e2e.js"
+  },
+  "dependencies": {
+    "pg": "8.13.1"
+  }
+}
