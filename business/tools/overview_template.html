@@ -1,0 +1,242 @@
+<title>Хук-Банк</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Manrope:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky tab bar над одной колонкой чтения; продукт и ролики — рабочие разделы, остальное — справочник */
+:root{
+  --bg:#f3f2f8; --surface:#ffffff; --ink:#17152b; --muted:#5d5a74; --line:#dedbea;
+  --accent:#5b3df5; --accent-ink:#ffffff; --signal:#00a894; --wait:#b25e00; --wait-bg:#fff1e0; --ok-bg:#dff6f2; --tint:#ece8ff;
+  --f-display:"Unbounded", "Manrope", system-ui, sans-serif;
+  --f-body:"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d0c16; --surface:#171527; --ink:#efedf9; --muted:#a29fbb; --line:#2b2842;
+  --accent:#9a85ff; --accent-ink:#120f24; --signal:#2fe0c8; --wait:#ffb35c; --wait-bg:#2e2213; --ok-bg:#10302c; --tint:#221d40; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d0c16; --surface:#171527; --ink:#efedf9; --muted:#a29fbb; --line:#2b2842;
+  --accent:#9a85ff; --accent-ink:#120f24; --signal:#2fe0c8; --wait:#ffb35c; --wait-bg:#2e2213; --ok-bg:#10302c; --tint:#221d40; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 var(--f-body);margin:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.gut{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mono{font-family:var(--f-mono);font-size:.82em}
+code,.mono{overflow-wrap:anywhere}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.2}
+h2,h3{font-family:var(--f-display);font-weight:600}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* шапка */
+.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top .gut{padding-block:28px 20px;display:grid;gap:10px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+.top h1{font-family:var(--f-display);font-weight:800;font-size:clamp(30px,6vw,54px);margin:0;letter-spacing:-.01em}
+.top h1 em{font-style:normal;color:var(--accent)}
+.top p.lead{margin:0;color:var(--muted);max-width:62ch;font-size:17px}
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
+nav.tabs .gut{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-block:6px}
+nav.tabs a{flex:none;text-decoration:none;color:var(--muted);font-weight:700;font-size:14px;padding:9px 14px;border-radius:8px;white-space:nowrap}
+nav.tabs a[aria-current="page"]{background:var(--ink);color:var(--bg)}
+nav.tabs a:hover{color:var(--ink)}
+main.gut{padding-block:28px 64px}
+section[data-view]{display:grid;gap:24px}
+
+/* обзор */
+.status{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.st{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:4px;min-width:0;align-content:start}
+.st b{font-size:15px}
+.st span{color:var(--muted);font-size:14px}
+.tag{justify-self:start;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px}
+.tag.ok{background:var(--ok-bg);color:var(--signal)}
+.tag.wait{background:var(--wait-bg);color:var(--wait)}
+.funnel{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;counter-reset:f}
+.step{flex:1 1 140px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:2px;min-width:0}
+.step small{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.step b{font-size:15px}
+.step i{font-style:normal;font-size:13px;color:var(--muted)}
+.todo{background:var(--tint);border-radius:12px;padding:18px 20px}
+.todo h2{margin:0 0 8px;font-size:20px}
+.todo ol{margin:0;padding-left:22px;display:grid;gap:6px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+.two > *{min-width:0}
+.note{font-size:14px;color:var(--muted);border-left:3px solid var(--line);padding-left:12px}
+
+/* документы (из markdown) */
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px clamp(16px,4vw,40px) 32px;min-width:0}
+.doc h2{font-size:clamp(20px,3.4vw,26px);margin:32px 0 12px;padding-top:4px}
+.doc h3{font-size:18px;margin:28px 0 8px}
+.doc h4{font-family:var(--f-body);font-size:16px;margin:20px 0 6px}
+.doc p,.doc li{max-width:72ch}
+.doc blockquote{margin:12px 0;background:var(--tint);border-radius:8px;padding:10px 16px}
+.doc blockquote p{margin:4px 0}
+.doc hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+.doc code{font-family:var(--f-mono);font-size:.86em;background:var(--tint);padding:1px 5px;border-radius:4px}
+.tw{overflow-x:auto;margin:12px 0}
+.tw table{border-collapse:collapse;font-size:14px;width:100%}
+.doc .tw table{min-width:560px}
+.tw th,.tw td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+.tw th{font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--bg)}
+.tw td:first-child{font-variant-numeric:tabular-nums}
+
+/* продукт */
+.product-head{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between}
+.product-head h2{margin:0;font-size:clamp(22px,4vw,32px)}
+.product-head p{margin:4px 0 0;color:var(--muted)}
+.doc.product ol li{display:flex;gap:8px;align-items:baseline;justify-content:space-between;padding:3px 0;border-bottom:1px dashed var(--line)}
+.doc.product ol li::marker{color:var(--accent);font-family:var(--f-mono)}
+.doc.product ol{padding-left:36px}
+.hc{flex:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:600 12px var(--f-body);border-radius:6px;padding:2px 8px;cursor:pointer}
+.hc:hover{color:var(--accent);border-color:var(--accent)}
+.doc.product ul{list-style:none;padding-left:0}
+.doc.product input[type=checkbox]{accent-color:var(--accent)}
+
+/* ролики */
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.f{border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 13px var(--f-body);padding:6px 12px;border-radius:99px;cursor:pointer}
+.f.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.vids{display:grid;gap:14px}
+.vid{display:grid;grid-template-columns:180px 1fr;gap:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.vid video{width:100%;aspect-ratio:9/16;max-width:100%;background:#1b1830;border-radius:8px;display:block}
+.vid-body{min-width:0;display:grid;gap:6px;align-content:start}
+.vid-meta{margin:0;display:flex;gap:8px;align-items:center;color:var(--muted)}
+.pill{font-size:12px;font-weight:700;background:var(--tint);color:var(--accent);padding:1px 9px;border-radius:99px}
+.vid h3{margin:0;font-size:18px}
+.vid dl{margin:0;display:grid;grid-template-columns:130px 1fr;gap:6px 12px;font-size:14.5px}
+.vid dt{font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding-top:3px}
+.vid dd{margin:0;min-width:0}
+.screen{margin:0;padding-left:18px}
+.copy{justify-self:start;border:0;background:var(--accent);color:var(--accent-ink);font:700 13px var(--f-body);padding:8px 14px;border-radius:8px;cursor:pointer}
+@media (max-width:640px){
+  .vid{grid-template-columns:1fr}
+  .vid video{max-width:220px}
+  .vid dl{grid-template-columns:1fr;gap:2px}
+  .vid dd{margin-bottom:6px}
+}
+@media (prefers-reduced-motion:no-preference){nav.tabs a{transition:background .15s,color .15s}}
+</style>
+
+<header class="top">
+  <div class="gut">
+    <p class="eyebrow">Цифровой продукт с бюджетом $0 · система запуска</p>
+    <h1>Хук-<em>Банк</em></h1>
+    <p class="lead">100 первых фраз для Reels и TikTok, 10 сценариев по секундам и план на 30 дней. Здесь собрано всё: сам продукт, 30 роликов, исследование, продажа, автоматизация и план запуска.</p>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Разделы">
+  <div class="gut">
+    <a href="#overview">Обзор</a>
+    <a href="#product">Продукт</a>
+    <a href="#videos">30 роликов</a>
+    <a href="#research">Исследование</a>
+    <a href="#launch">MVP · продажа · сайт</a>
+    <a href="#plan">Автоматизация · 30 дней</a>
+  </div>
+</nav>
+
+<main class="gut">
+
+<section data-view="overview">
+  <div class="status">
+    <div class="st"><span class="tag ok">готово</span><b>Продукт</b><span>PDF на 16 страниц и бесплатная мини-версия на 5 страниц</span></div>
+    <div class="st"><span class="tag ok">готово</span><b>30 роликов</b><span>Сценарии и готовые вертикальные MP4 без лица</span></div>
+    <div class="st"><span class="tag ok">готово</span><b>Страница продукта</b><span>GitHub Pages, без домена и хостинга</span></div>
+    <div class="st"><span class="tag ok">готово</span><b>Автосборка</b><span>Правишь текст, PDF и видео пересобираются сами. Включится после слияния в main</span></div>
+    <div class="st"><span class="tag wait">ждёт тебя</span><b>Оплата</b><span>Gumroad: 2 товара, проверить выплаты в твою страну</span></div>
+    <div class="st"><span class="tag wait">ждёт тебя</span><b>Публикация</b><span>Аккаунты TikTok и Instagram, Buffer Free</span></div>
+  </div>
+
+  <div>
+    <h2>Путь покупателя</h2>
+    <div class="funnel">
+      <div class="step"><small>Шаг 1</small><b>Ролик</b><i>Buffer публикует по расписанию</i></div>
+      <div class="step"><small>Шаг 2</small><b>Профиль</b><i>Ссылка в био</i></div>
+      <div class="step"><small>Шаг 3</small><b>Страница</b><i>GitHub Pages, работает 24/7</i></div>
+      <div class="step"><small>Шаг 4</small><b>20 хуков бесплатно</b><i>Gumroad собирает email</i></div>
+      <div class="step"><small>Шаг 5</small><b>Полная версия</b><i>Оплата в Gumroad</i></div>
+      <div class="step"><small>Шаг 6</small><b>PDF на почту</b><i>Автоматически</i></div>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="todo">
+      <h2>Твои 3 шага</h2>
+      <ol>
+        <li>Зарегистрируйся в Gumroad и проверь, что выплаты работают в твою страну.</li>
+        <li>Создай 2 товара: «Хук-Банк мини» за $0 и «Хук-Банк» с ценой «от $0». Загрузи PDF и пришли мне ссылки.</li>
+        <li>Разреши слить ветку в main, и страница продукта появится онлайн.</li>
+      </ol>
+    </div>
+    <div>
+      <h2 style="margin-top:0">Твоё время после настройки</h2>
+      <div class="tw"><table>
+        <thead><tr><th>Когда</th><th>Что</th><th>Время</th></tr></thead>
+        <tbody>
+          <tr><td>Раз в 10 дней</td><td>Загрузить 10 роликов в Buffer, добавить звук</td><td>~20 мин</td></tr>
+          <tr><td>Раз в неделю</td><td>3 скриншота аналитики для ИИ</td><td>2 мин</td></tr>
+          <tr><td>Раз в неделю</td><td>Прочитать отчёт и решить</td><td>3 мин</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Около часа в неделю. Это оценка, а не гарантия. Доход система не гарантирует: её задача — проверить спрос с минимальными затратами.</p>
+    </div>
+  </div>
+  <p class="note">Файлы PDF и MP4 нельзя скачать с этой страницы. Они отправлены в чат и лежат в репозитории: <span class="mono">business/product/dist</span> и <span class="mono">business/content/out</span>.</p>
+</section>
+
+<section data-view="product" hidden>
+  <div class="product-head">
+    <div>
+      <h2>Хук-Банк · полный текст продукта</h2>
+      <p>Это ровно то, что получает покупатель в PDF. У каждого хука есть кнопка «Копировать».</p>
+    </div>
+  </div>
+  <div class="doc product">{{PRODUCT}}</div>
+</section>
+
+<section data-view="videos" hidden>
+  <div class="filters" role="group" aria-label="Фильтр по типу">{{FILTERS}}</div>
+  <p class="note">Видео без звука специально: трендовый звук добавляешь в приложении при загрузке. Примерно 80% роликов дают пользу, около 20% мягко упоминают продукт.</p>
+  <div class="vids">{{VIDEOS}}</div>
+</section>
+
+<section data-view="research" hidden><div class="doc">{{RESEARCH}}</div></section>
+<section data-view="launch" hidden><div class="doc">{{LAUNCH}}</div></section>
+<section data-view="plan" hidden><div class="doc">{{PLAN}}</div></section>
+
+</main>
+
+<script>
+(function(){
+  const views=[...document.querySelectorAll("section[data-view]")];
+  const links=[...document.querySelectorAll("nav.tabs a")];
+  function show(){
+    const id=(location.hash||"#overview").slice(1);
+    const name=views.some(v=>v.dataset.view===id)?id:"overview";
+    views.forEach(v=>v.hidden=v.dataset.view!==name);
+    links.forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+name?"page":"false"));
+  }
+  window.addEventListener("hashchange",()=>{show();window.scrollTo(0,0)});
+  show();
+
+  function copy(text,btn,label){
+    const done=()=>{btn.textContent="Скопировано";setTimeout(()=>btn.textContent=label,1400)};
+    try{navigator.clipboard.writeText(text).then(done,()=>fallback())}catch(e){fallback()}
+    function fallback(){const r=document.createRange();r.selectNodeContents(btn.parentElement);const s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent="Выделено — нажми Ctrl+C"}
+  }
+  document.querySelectorAll(".doc.product ol li").forEach(li=>{
+    const text=li.textContent.trim();
+    const b=document.createElement("button");b.type="button";b.className="hc";b.textContent="Копировать";
+    b.addEventListener("click",()=>copy(text,b,"Копировать"));li.appendChild(b);
+  });
+  document.querySelectorAll(".copy").forEach(b=>b.addEventListener("click",()=>copy(b.dataset.copy,b,"Скопировать описание")));
+
+  const fs=[...document.querySelectorAll(".f")];
+  fs.forEach(f=>f.addEventListener("click",()=>{
+    fs.forEach(x=>x.classList.toggle("on",x===f));
+    document.querySelectorAll(".vid").forEach(v=>v.hidden=!!f.dataset.f&&v.dataset.type!==f.dataset.f);
+  }));
+})();
+</script>

@@ -1,0 +1,2130 @@
+<title>Хук-Банк</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Manrope:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky tab bar над одной колонкой чтения; продукт и ролики — рабочие разделы, остальное — справочник */
+:root{
+  --bg:#f3f2f8; --surface:#ffffff; --ink:#17152b; --muted:#5d5a74; --line:#dedbea;
+  --accent:#5b3df5; --accent-ink:#ffffff; --signal:#00a894; --wait:#b25e00; --wait-bg:#fff1e0; --ok-bg:#dff6f2; --tint:#ece8ff;
+  --f-display:"Unbounded", "Manrope", system-ui, sans-serif;
+  --f-body:"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d0c16; --surface:#171527; --ink:#efedf9; --muted:#a29fbb; --line:#2b2842;
+  --accent:#9a85ff; --accent-ink:#120f24; --signal:#2fe0c8; --wait:#ffb35c; --wait-bg:#2e2213; --ok-bg:#10302c; --tint:#221d40; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d0c16; --surface:#171527; --ink:#efedf9; --muted:#a29fbb; --line:#2b2842;
+  --accent:#9a85ff; --accent-ink:#120f24; --signal:#2fe0c8; --wait:#ffb35c; --wait-bg:#2e2213; --ok-bg:#10302c; --tint:#221d40; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 var(--f-body);margin:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.gut{max-width:1040px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mono{font-family:var(--f-mono);font-size:.82em}
+code,.mono{overflow-wrap:anywhere}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.2}
+h2,h3{font-family:var(--f-display);font-weight:600}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* шапка */
+.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top .gut{padding-block:28px 20px;display:grid;gap:10px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0}
+.top h1{font-family:var(--f-display);font-weight:800;font-size:clamp(30px,6vw,54px);margin:0;letter-spacing:-.01em}
+.top h1 em{font-style:normal;color:var(--accent)}
+.top p.lead{margin:0;color:var(--muted);max-width:62ch;font-size:17px}
+nav.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
+nav.tabs .gut{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-block:6px}
+nav.tabs a{flex:none;text-decoration:none;color:var(--muted);font-weight:700;font-size:14px;padding:9px 14px;border-radius:8px;white-space:nowrap}
+nav.tabs a[aria-current="page"]{background:var(--ink);color:var(--bg)}
+nav.tabs a:hover{color:var(--ink)}
+main.gut{padding-block:28px 64px}
+section[data-view]{display:grid;gap:24px}
+
+/* обзор */
+.status{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.st{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:4px;min-width:0;align-content:start}
+.st b{font-size:15px}
+.st span{color:var(--muted);font-size:14px}
+.tag{justify-self:start;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px}
+.tag.ok{background:var(--ok-bg);color:var(--signal)}
+.tag.wait{background:var(--wait-bg);color:var(--wait)}
+.funnel{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;counter-reset:f}
+.step{flex:1 1 140px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:2px;min-width:0}
+.step small{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.step b{font-size:15px}
+.step i{font-style:normal;font-size:13px;color:var(--muted)}
+.todo{background:var(--tint);border-radius:12px;padding:18px 20px}
+.todo h2{margin:0 0 8px;font-size:20px}
+.todo ol{margin:0;padding-left:22px;display:grid;gap:6px}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+.two > *{min-width:0}
+.note{font-size:14px;color:var(--muted);border-left:3px solid var(--line);padding-left:12px}
+
+/* документы (из markdown) */
+.doc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px clamp(16px,4vw,40px) 32px;min-width:0}
+.doc h2{font-size:clamp(20px,3.4vw,26px);margin:32px 0 12px;padding-top:4px}
+.doc h3{font-size:18px;margin:28px 0 8px}
+.doc h4{font-family:var(--f-body);font-size:16px;margin:20px 0 6px}
+.doc p,.doc li{max-width:72ch}
+.doc blockquote{margin:12px 0;background:var(--tint);border-radius:8px;padding:10px 16px}
+.doc blockquote p{margin:4px 0}
+.doc hr{border:0;border-top:1px solid var(--line);margin:28px 0}
+.doc code{font-family:var(--f-mono);font-size:.86em;background:var(--tint);padding:1px 5px;border-radius:4px}
+.tw{overflow-x:auto;margin:12px 0}
+.tw table{border-collapse:collapse;font-size:14px;width:100%}
+.doc .tw table{min-width:560px}
+.tw th,.tw td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+.tw th{font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);background:var(--bg)}
+.tw td:first-child{font-variant-numeric:tabular-nums}
+
+/* продукт */
+.product-head{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between}
+.product-head h2{margin:0;font-size:clamp(22px,4vw,32px)}
+.product-head p{margin:4px 0 0;color:var(--muted)}
+.doc.product ol li{display:flex;gap:8px;align-items:baseline;justify-content:space-between;padding:3px 0;border-bottom:1px dashed var(--line)}
+.doc.product ol li::marker{color:var(--accent);font-family:var(--f-mono)}
+.doc.product ol{padding-left:36px}
+.hc{flex:none;border:1px solid var(--line);background:transparent;color:var(--muted);font:600 12px var(--f-body);border-radius:6px;padding:2px 8px;cursor:pointer}
+.hc:hover{color:var(--accent);border-color:var(--accent)}
+.doc.product ul{list-style:none;padding-left:0}
+.doc.product input[type=checkbox]{accent-color:var(--accent)}
+
+/* ролики */
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.f{border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 13px var(--f-body);padding:6px 12px;border-radius:99px;cursor:pointer}
+.f.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.vids{display:grid;gap:14px}
+.vid{display:grid;grid-template-columns:180px 1fr;gap:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.vid video{width:100%;aspect-ratio:9/16;max-width:100%;background:#1b1830;border-radius:8px;display:block}
+.vid-body{min-width:0;display:grid;gap:6px;align-content:start}
+.vid-meta{margin:0;display:flex;gap:8px;align-items:center;color:var(--muted)}
+.pill{font-size:12px;font-weight:700;background:var(--tint);color:var(--accent);padding:1px 9px;border-radius:99px}
+.vid h3{margin:0;font-size:18px}
+.vid dl{margin:0;display:grid;grid-template-columns:130px 1fr;gap:6px 12px;font-size:14.5px}
+.vid dt{font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding-top:3px}
+.vid dd{margin:0;min-width:0}
+.screen{margin:0;padding-left:18px}
+.copy{justify-self:start;border:0;background:var(--accent);color:var(--accent-ink);font:700 13px var(--f-body);padding:8px 14px;border-radius:8px;cursor:pointer}
+@media (max-width:640px){
+  .vid{grid-template-columns:1fr}
+  .vid video{max-width:220px}
+  .vid dl{grid-template-columns:1fr;gap:2px}
+  .vid dd{margin-bottom:6px}
+}
+@media (prefers-reduced-motion:no-preference){nav.tabs a{transition:background .15s,color .15s}}
+</style>
+
+<header class="top">
+  <div class="gut">
+    <p class="eyebrow">Цифровой продукт с бюджетом $0 · система запуска</p>
+    <h1>Хук-<em>Банк</em></h1>
+    <p class="lead">100 первых фраз для Reels и TikTok, 10 сценариев по секундам и план на 30 дней. Здесь собрано всё: сам продукт, 30 роликов, исследование, продажа, автоматизация и план запуска.</p>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Разделы">
+  <div class="gut">
+    <a href="#overview">Обзор</a>
+    <a href="#product">Продукт</a>
+    <a href="#videos">30 роликов</a>
+    <a href="#research">Исследование</a>
+    <a href="#launch">MVP · продажа · сайт</a>
+    <a href="#plan">Автоматизация · 30 дней</a>
+  </div>
+</nav>
+
+<main class="gut">
+
+<section data-view="overview">
+  <div class="status">
+    <div class="st"><span class="tag ok">готово</span><b>Продукт</b><span>PDF на 16 страниц и бесплатная мини-версия на 5 страниц</span></div>
+    <div class="st"><span class="tag ok">готово</span><b>30 роликов</b><span>Сценарии и готовые вертикальные MP4 без лица</span></div>
+    <div class="st"><span class="tag ok">готово</span><b>Страница продукта</b><span>GitHub Pages, без домена и хостинга</span></div>
+    <div class="st"><span class="tag ok">готово</span><b>Автосборка</b><span>Правишь текст, PDF и видео пересобираются сами. Включится после слияния в main</span></div>
+    <div class="st"><span class="tag wait">ждёт тебя</span><b>Оплата</b><span>Gumroad: 2 товара, проверить выплаты в твою страну</span></div>
+    <div class="st"><span class="tag wait">ждёт тебя</span><b>Публикация</b><span>Аккаунты TikTok и Instagram, Buffer Free</span></div>
+  </div>
+
+  <div>
+    <h2>Путь покупателя</h2>
+    <div class="funnel">
+      <div class="step"><small>Шаг 1</small><b>Ролик</b><i>Buffer публикует по расписанию</i></div>
+      <div class="step"><small>Шаг 2</small><b>Профиль</b><i>Ссылка в био</i></div>
+      <div class="step"><small>Шаг 3</small><b>Страница</b><i>GitHub Pages, работает 24/7</i></div>
+      <div class="step"><small>Шаг 4</small><b>20 хуков бесплатно</b><i>Gumroad собирает email</i></div>
+      <div class="step"><small>Шаг 5</small><b>Полная версия</b><i>Оплата в Gumroad</i></div>
+      <div class="step"><small>Шаг 6</small><b>PDF на почту</b><i>Автоматически</i></div>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="todo">
+      <h2>Твои 3 шага</h2>
+      <ol>
+        <li>Зарегистрируйся в Gumroad и проверь, что выплаты работают в твою страну.</li>
+        <li>Создай 2 товара: «Хук-Банк мини» за $0 и «Хук-Банк» с ценой «от $0». Загрузи PDF и пришли мне ссылки.</li>
+        <li>Разреши слить ветку в main, и страница продукта появится онлайн.</li>
+      </ol>
+    </div>
+    <div>
+      <h2 style="margin-top:0">Твоё время после настройки</h2>
+      <div class="tw"><table>
+        <thead><tr><th>Когда</th><th>Что</th><th>Время</th></tr></thead>
+        <tbody>
+          <tr><td>Раз в 10 дней</td><td>Загрузить 10 роликов в Buffer, добавить звук</td><td>~20 мин</td></tr>
+          <tr><td>Раз в неделю</td><td>3 скриншота аналитики для ИИ</td><td>2 мин</td></tr>
+          <tr><td>Раз в неделю</td><td>Прочитать отчёт и решить</td><td>3 мин</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Около часа в неделю. Это оценка, а не гарантия. Доход система не гарантирует: её задача — проверить спрос с минимальными затратами.</p>
+    </div>
+  </div>
+  <p class="note">Файлы PDF и MP4 нельзя скачать с этой страницы. Они отправлены в чат и лежат в репозитории: <span class="mono">business/product/dist</span> и <span class="mono">business/content/out</span>.</p>
+</section>
+
+<section data-view="product" hidden>
+  <div class="product-head">
+    <div>
+      <h2>Хук-Банк · полный текст продукта</h2>
+      <p>Это ровно то, что получает покупатель в PDF. У каждого хука есть кнопка «Копировать».</p>
+    </div>
+  </div>
+  <div class="doc product"><h2 id="как-пользоваться-2-минуты">Как пользоваться (2 минуты)</h2>
+<ol type="1">
+<li><strong>Выбери хук.</strong> Открой любую категорию, найди фразу, от
+которой самому захотелось досмотреть.</li>
+<li><strong>Подставь свою нишу.</strong> Всё, что в [квадратных
+скобках], меняешь на своё: [ниша] = «маникюр», [результат] = «ногти
+держатся 4 недели».</li>
+<li><strong>Возьми шаблон сценария</strong> из раздела 11 и вставь туда
+хук.</li>
+<li><strong>Сними за один дубль.</strong> Хук говоришь в первые 1–2
+секунды и одновременно пишешь его текстом на экране.</li>
+<li><strong>Сверься с планом</strong> из раздела 12: каждый день уже
+расписан.</li>
+</ol>
+<blockquote>
+<p>Правило: хук — это <strong>обещание</strong>. Остальная часть ролика
+должна его выполнить. Если хук обещает больше, чем даёт ролик, зритель
+уходит и алгоритм это видит.</p>
+</blockquote>
+<hr />
+<h2 id="1-хуки-ошибки-люди-боятся-ошибиться">1. Хуки-ошибки (люди боятся
+ошибиться)</h2>
+<ol type="1">
+<li>«Если ты делаешь [действие] вот так — остановись.»</li>
+<li>«3 ошибки в [ниша], которые я делал(а) целый год.»</li>
+<li>«Это главная причина, почему у тебя не получается [результат].»</li>
+<li>«Перестань [популярное действие]. Вот что работает вместо
+этого.»</li>
+<li>«Я потратил(а) [время/деньги] на эту ошибку, чтобы ты не
+тратил(а).»</li>
+<li>«90% новичков в [ниша] делают это неправильно — проверь себя.»
+<em>(число меняй на своё наблюдение, не выдумывай статистику)</em></li>
+<li>«Ты точно не делаешь эту ошибку с [предмет]?»</li>
+<li>«Самая дорогая ошибка в [ниша] выглядит безобидно.»</li>
+<li>«Вот почему твой [предмет] [проблема] уже через неделю.»</li>
+<li>«Не покупай [вещь], пока не посмотришь это.»</li>
+</ol>
+<h2 id="2-хуки-результат-показать-после-в-первую-секунду">2.
+Хуки-результат (показать «после» в первую секунду)</h2>
+<ol start="11" type="1">
+<li>«Вот как выглядит [результат] через [срок].»</li>
+<li>«Это сделано за [короткое время]. Показываю как.»</li>
+<li>«От [точка А] до [точка Б] — без [неприятное].»</li>
+<li>«Мой результат за 30 дней [действие] — честно.»</li>
+<li>«Так выглядит [предмет], если сделать один простой шаг.»</li>
+<li>«Результат, ради которого клиенты возвращаются.»</li>
+<li>«Да, это сделано на телефоне.»</li>
+<li>«До — после. Разница в одной детали.»</li>
+<li>«Я не верил(а), что это сработает. Смотри.»</li>
+<li>«Минимальный бюджет, максимальный [результат].»</li>
+</ol>
+<h2 id="3-хуки-любопытство-незакрытая-петля">3. Хуки-любопытство
+(незакрытая петля)</h2>
+<ol start="21" type="1">
+<li>«Никто не говорит об этом в [ниша].»</li>
+<li>«Я узнал(а) это слишком поздно.»</li>
+<li>«Это звучит странно, но работает.»</li>
+<li>«Попробуй это один раз — и больше не вернёшься к старому
+способу.»</li>
+<li>«Вот что происходит, если [неожиданное действие].»</li>
+<li>«Секрет не в [очевидное]. Секрет в…»</li>
+<li>«Подожди до конца — последний шаг всё меняет.»</li>
+<li>«Я проверил(а) [популярный совет]. Вот правда.»</li>
+<li>«Почему [профессионалы] никогда не делают [действие]?»</li>
+<li>«Одна вещь, которую я бы сказал(а) себе в начале.»</li>
+</ol>
+<h2 id="4-хуки-pov-и-истории">4. Хуки-POV и истории</h2>
+<ol start="31" type="1">
+<li>«POV: ты наконец понял(а), как [результат].»</li>
+<li>«POV: клиент пришёл с [проблема], а ушёл с [результат].»</li>
+<li>«История о том, как я чуть не бросил(а) [ниша].»</li>
+<li>«Мой первый [клиент/продукт] был провалом. Вот почему.»</li>
+<li>«Год назад я [точка А]. Сегодня [точка Б].»</li>
+<li>«Вот что мне сказал клиент, и я до сих пор думаю об этом.»</li>
+<li>«Самый странный запрос за всю мою работу.»</li>
+<li>«День из жизни [профессия] без фильтров.»</li>
+<li>«Я сделал(а) это впервые. Получилось вот что.»</li>
+<li>«Как я объясняю [ниша] своей маме.»</li>
+</ol>
+<h2 id="5-хуки-список-обещание-конкретики">5. Хуки-список (обещание
+конкретики)</h2>
+<ol start="41" type="1">
+<li>«3 вещи, без которых я не начинаю [действие].»</li>
+<li>«5 бесплатных инструментов для [задача].»</li>
+<li>«Всё, что нужно знать о [тема], за 30 секунд.»</li>
+<li>«3 шага к [результат] — сохрани.»</li>
+<li>«Топ-3 [предмет] до [цена].»</li>
+<li>«Чек-лист перед [событие] — сделай скрин.»</li>
+<li>«2 способа [действие]: дешёвый и правильный.»</li>
+<li>«Вот 4 причины, почему [проблема].»</li>
+<li>«Минимальный набор для старта в [ниша].»</li>
+<li>«3 вопроса, которые стоит задать перед [покупка/услуга].»</li>
+</ol>
+<h2 id="6-хуки-спор-и-мнение">6. Хуки-спор и мнение</h2>
+<ol start="51" type="1">
+<li>«Непопулярное мнение: [утверждение].»</li>
+<li>«Я не согласен(на) с этим советом, и вот почему.»</li>
+<li>«[Популярная вещь] — переоценена. Объясняю.»</li>
+<li>«Меня за это закидают тапками, но…»</li>
+<li>«Самый вредный совет в [ниша].»</li>
+<li>«Дорого — не значит лучше. Сравниваю.»</li>
+<li>«Хватит говорить, что [миф].»</li>
+<li>«Есть два типа людей в [ниша]. Ты какой?»</li>
+<li>«Это нормально — [то, чего стыдятся].»</li>
+<li>«Я сменил(а) мнение о [тема].»</li>
+</ol>
+<h2 id="7-хуки-обращение-прямо-к-нужному-человеку">7. Хуки-обращение
+(прямо к нужному человеку)</h2>
+<ol start="61" type="1">
+<li>«Если ты [описание ЦА] — это для тебя.»</li>
+<li>«Это видео для тех, кто устал от [проблема].»</li>
+<li>«Если у тебя [ситуация], не листай.»</li>
+<li>«Новичкам в [ниша] — сохраните.»</li>
+<li>«Тем, кто думает, что уже поздно начинать [действие].»</li>
+<li>«Если клиенты говорят “дорого” — смотри.»</li>
+<li>«Мастерам, у которых нет времени на соцсети.»</li>
+<li>«Для тех, кто снимает, но не набирает просмотры.»</li>
+<li>«Если ты интроверт и боишься камеры.»</li>
+<li>«Тебе нужно это, если ты работаешь из дома.»</li>
+</ol>
+<h2 id="8-хуки-сравнение-и-тест">8. Хуки-сравнение и тест</h2>
+<ol start="71" type="1">
+<li>«[Вариант А] против [Вариант Б]. Кто победит?»</li>
+<li>«Дешёвый vs дорогой [предмет] — тест.»</li>
+<li>«Я неделю делал(а) [действие]. Итоги.»</li>
+<li>«Проверяю лайфхак из TikTok — работает или нет?»</li>
+<li>«Тот же [предмет], два способа. Видишь разницу?»</li>
+<li>«Делаю [задачу] за 1 минуту и за 10 минут.»</li>
+<li>«Пробую [тренд] как профессионал.»</li>
+<li>«Сравниваю бесплатный и платный способ [действие].»</li>
+<li>«Что лучше для новичка: [А] или [Б]?»</li>
+<li>«Повторил(а) [популярное видео]. Вот правда.»</li>
+</ol>
+<h2 id="9-хуки-быстрая-польза">9. Хуки-быстрая польза</h2>
+<ol start="81" type="1">
+<li>«Сохрани, пока не потерял(а).»</li>
+<li>«Один приём, который экономит мне час в день.»</li>
+<li>«Как [действие] за 30 секунд.»</li>
+<li>«Сделай это сегодня вечером, и завтра скажешь спасибо.»</li>
+<li>«Самый простой способ [результат].»</li>
+<li>«Ты можешь сделать это прямо сейчас — с телефона.»</li>
+<li>«Бесплатная замена [дорогой вещи].»</li>
+<li>«Фраза, которая закрывает возражение “дорого”.»</li>
+<li>«Шаблон, который я использую каждый день.»</li>
+<li>«Лайфхак, о котором знают только [профессионалы].»</li>
+</ol>
+<h2 id="10-хуки-визуальные-работают-даже-без-звука">10. Хуки-визуальные
+(работают даже без звука)</h2>
+<ol start="91" type="1">
+<li>Текст на экране: «Не смотри, если [провокация]», кадр — процесс
+работы.</li>
+<li>Начни ролик с финального результата крупным планом, потом «как я это
+сделал(а)».</li>
+<li>Резкая смена: «до» 0,5 сек → «после» с текстом «1 деталь».</li>
+<li>Рука убирает предмет из кадра → текст «Без этого лучше».</li>
+<li>Скрин переписки (без личных данных): «Клиент написал это…».</li>
+<li>Таймер на экране: «Делаю за 60 секунд».</li>
+<li>Ошибка крупно, красный крест, затем правильный вариант с зелёной
+галкой.</li>
+<li>Стрелка на деталь + текст «Заметил(а)?».</li>
+<li>Текст «Часть 1» — подписываются ради части 2.</li>
+<li>Ты молча смотришь в камеру, на экране текст: «Когда клиент говорит
+[фраза]».</li>
+</ol>
+<hr />
+<h2 id="примеры-как-хуки-выглядят-в-6-нишах">Примеры: как хуки выглядят
+в 6 нишах</h2>
+<p><strong>Маникюр</strong></p>
+<ul>
+<li>«Если твой маникюр скалывается через неделю — остановись.» <em>(хук
+1)</em></li>
+<li>«POV: клиентка пришла со сломанным ногтем, а ушла с длиной.»
+<em>(хук 32)</em></li>
+<li>«Дешёвая база vs дорогая — тест на 3 недели.» <em>(хук 72)</em></li>
+</ul>
+<p><strong>Кондитер / домашняя выпечка</strong></p>
+<ul>
+<li>«Не покупай форму для торта, пока не посмотришь это.» <em>(хук
+10)</em></li>
+<li>«Вот как выглядит бенто-торт за 40 минут.» <em>(хук 11)</em></li>
+<li>«Почему кондитеры никогда не открывают духовку первые 20 минут?»
+<em>(хук 29)</em></li>
+</ul>
+<p><strong>Фитнес-тренер</strong></p>
+<ul>
+<li>«3 ошибки в приседаниях, которые я делал год.» <em>(хук 2)</em></li>
+<li>«Хватит говорить, что пресс качается каждый день.» <em>(хук
+57)</em></li>
+<li>«Если ты работаешь из дома и болит спина — не листай.» <em>(хук
+63)</em></li>
+</ul>
+<p><strong>Репетитор / преподаватель языка</strong></p>
+<ul>
+<li>«Я узнал(а) это слишком поздно: учить слова списком бесполезно.»
+<em>(хук 22)</em></li>
+<li>«Фраза, которую ты говоришь неправильно уже 5 лет.» <em>(хук
+7)</em></li>
+<li>«Тем, кто думает, что поздно учить английский в 35.» <em>(хук
+65)</em></li>
+</ul>
+<p><strong>Фотограф</strong></p>
+<ul>
+<li>«Да, это снято на телефон.» <em>(хук 17)</em></li>
+<li>«До — после. Разница в одной настройке.» <em>(хук 18)</em></li>
+<li>«Самый странный запрос за всю мою работу.» <em>(хук 37)</em></li>
+</ul>
+<p><strong>Эксперт / консультант / фрилансер</strong></p>
+<ul>
+<li>«Если клиенты говорят “дорого” — смотри.» <em>(хук 66)</em></li>
+<li>«Мой первый клиент был провалом. Вот почему.» <em>(хук 34)</em></li>
+<li>«Непопулярное мнение: бесплатные консультации вредят тебе.» <em>(хук
+51)</em></li>
+</ul>
+<hr />
+<h2 id="11-10-шаблонов-сценариев-1540-секунд">11. 10 шаблонов сценариев
+(15–40 секунд)</h2>
+<p><strong>Шаблон A — «Ошибка → Исправление»</strong> 0–2 с: хук-ошибка
+· 2–10 с: показываешь ошибку · 10–25 с: правильный способ · 25–30 с:
+«Сохрани, чтобы не забыть».</p>
+<p><strong>Шаблон B — «Результат → Как»</strong> 0–2 с: финальный
+результат · 2–20 с: 3 шага быстрыми кадрами · 20–25 с: «Пиши “ХОЧУ” —
+пришлю [бонус]».</p>
+<p><strong>Шаблон C — «История за 30 секунд»</strong> 0–2 с: хук-POV ·
+2–15 с: проблема/конфликт · 15–25 с: поворот · 25–30 с: вывод одной
+фразой.</p>
+<p><strong>Шаблон D — «Список»</strong> 0–2 с: «3 вещи…» · по 5–7 с на
+пункт · последний пункт самый сильный · CTA «какой твой 4-й?».</p>
+<p><strong>Шаблон E — «Миф vs Правда»</strong> 0–2 с: «Хватит говорить,
+что [миф]» · 2–10 с: почему в это верят · 10–25 с: правда +
+доказательство · CTA «согласен(на)?».</p>
+<p><strong>Шаблон F — «Тест»</strong> 0–2 с: «Проверяю [лайфхак]» · 2–20
+с: процесс · 20–25 с: вердикт «работает / нет» · CTA «что проверить
+дальше?».</p>
+<p><strong>Шаблон G — «Ответ на комментарий»</strong> 0–2 с: скрин
+комментария · 2–25 с: ответ с демонстрацией · CTA «задавай вопросы —
+отвечу видео».</p>
+<p><strong>Шаблон H — «День из жизни»</strong> 0–2 с: «День [профессия]
+без фильтров» · 2–30 с: 6–8 кадров по 3 с · финал: честная мысль
+дня.</p>
+<p><strong>Шаблон I — «Сравнение»</strong> 0–2 с: «[А] vs [Б]» · 2–12 с:
+А · 12–22 с: Б · 22–28 с: победитель и почему.</p>
+<p><strong>Шаблон J — «Быстрая польза»</strong> 0–2 с: «Сохрани» · 2–20
+с: шаги текстом на экране · 20–25 с: «Ещё 99 таких хуков — ссылка в
+профиле».</p>
+<hr />
+<h2 id="12-30-дневный-контент-план">12. 30-дневный контент-план</h2>
+<div class="tw"><table>
+<thead>
+<tr class="header">
+<th>День</th>
+<th>Категория хука</th>
+<th>Шаблон</th>
+<th>Задача дня</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Обращение</td>
+<td>D</td>
+<td>Представиться нише: «Если ты…»</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Ошибки</td>
+<td>A</td>
+<td>Самая частая ошибка клиентов</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Результат</td>
+<td>B</td>
+<td>Лучшая работа «до/после»</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Любопытство</td>
+<td>C</td>
+<td>Факт, который удивляет новичков</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>Список</td>
+<td>D</td>
+<td>3 инструмента</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>POV</td>
+<td>C</td>
+<td>История клиента</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>Быстрая польза</td>
+<td>J</td>
+<td>Лайфхак за 30 сек</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>Спор</td>
+<td>E</td>
+<td>Миф в нише</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td>Сравнение</td>
+<td>I</td>
+<td>Дешёвый vs дорогой</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>Тест</td>
+<td>F</td>
+<td>Проверка тренда</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td>Ошибки</td>
+<td>A</td>
+<td>Ошибка №2</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td>Визуальный</td>
+<td>B</td>
+<td>Результат без слов</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td>Ответ</td>
+<td>G</td>
+<td>Ответ на вопрос из комментариев</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td>День из жизни</td>
+<td>H</td>
+<td>Закулисье</td>
+</tr>
+<tr class="odd">
+<td>15</td>
+<td>Обращение</td>
+<td>J</td>
+<td>Польза для узкой группы</td>
+</tr>
+<tr class="even">
+<td>16</td>
+<td>Результат</td>
+<td>B</td>
+<td>Результат за короткое время</td>
+</tr>
+<tr class="odd">
+<td>17</td>
+<td>Спор</td>
+<td>E</td>
+<td>Непопулярное мнение</td>
+</tr>
+<tr class="even">
+<td>18</td>
+<td>Список</td>
+<td>D</td>
+<td>3 вопроса перед покупкой</td>
+</tr>
+<tr class="odd">
+<td>19</td>
+<td>Любопытство</td>
+<td>C</td>
+<td>«Я узнал(а) это слишком поздно»</td>
+</tr>
+<tr class="even">
+<td>20</td>
+<td>POV</td>
+<td>C</td>
+<td>Свой провал и вывод</td>
+</tr>
+<tr class="odd">
+<td>21</td>
+<td>Сравнение</td>
+<td>I</td>
+<td>Два способа</td>
+</tr>
+<tr class="even">
+<td>22</td>
+<td>Ошибки</td>
+<td>A</td>
+<td>Ошибка, которая стоит денег</td>
+</tr>
+<tr class="odd">
+<td>23</td>
+<td>Быстрая польза</td>
+<td>J</td>
+<td>Шаблон, который используешь</td>
+</tr>
+<tr class="even">
+<td>24</td>
+<td>Тест</td>
+<td>F</td>
+<td>Неделя эксперимента</td>
+</tr>
+<tr class="odd">
+<td>25</td>
+<td>Визуальный</td>
+<td>B</td>
+<td>Таймер 60 секунд</td>
+</tr>
+<tr class="even">
+<td>26</td>
+<td>Ответ</td>
+<td>G</td>
+<td>Возражение «дорого»</td>
+</tr>
+<tr class="odd">
+<td>27</td>
+<td>День из жизни</td>
+<td>H</td>
+<td>Самый загруженный день</td>
+</tr>
+<tr class="even">
+<td>28</td>
+<td>Любопытство</td>
+<td>C</td>
+<td>«Часть 1» сериала</td>
+</tr>
+<tr class="odd">
+<td>29</td>
+<td>Результат</td>
+<td>B</td>
+<td>Итог месяца</td>
+</tr>
+<tr class="even">
+<td>30</td>
+<td>Обращение</td>
+<td>D</td>
+<td>Что дальше + приглашение в профиль</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="13-чек-лист-перед-публикацией">13. Чек-лист перед
+публикацией</h2>
+<ul class="task-list">
+<li><label><input type="checkbox" />Хук звучит в первые 2 секунды
+<strong>и</strong> продублирован текстом.</label></li>
+<li><label><input type="checkbox" />Ролик понятен без
+звука.</label></li>
+<li><label><input type="checkbox" />Ролик выполняет обещание
+хука.</label></li>
+<li><label><input type="checkbox" />Один ролик — одна
+мысль.</label></li>
+<li><label><input type="checkbox" />Финал: один CTA (сохрани / напиши
+слово / подпишись), не три.</label></li>
+<li><label><input type="checkbox" />Обложка с крупным текстом из 3–5
+слов.</label></li>
+<li><label><input type="checkbox" />В описании 1 строка пользы + 3–5
+хэштегов по нише.</label></li>
+</ul>
+<p><em>Хук-банк не гарантирует просмотров или дохода. Он сокращает время
+на подготовку и даёт проверенные структуры, которые ты тестируешь на
+своей аудитории.</em></p>
+</div>
+</section>
+
+<section data-view="videos" hidden>
+  <div class="filters" role="group" aria-label="Фильтр по типу"><button class="f on" type="button" data-f="">Все · 30</button><button class="f" type="button" data-f="POV">POV · 1</button><button class="f" type="button" data-f="день">день · 1</button><button class="f" type="button" data-f="история">история · 3</button><button class="f" type="button" data-f="любопытство">любопытство · 1</button><button class="f" type="button" data-f="мнение">мнение · 2</button><button class="f" type="button" data-f="ответ">ответ · 1</button><button class="f" type="button" data-f="ошибка">ошибка · 3</button><button class="f" type="button" data-f="польза">польза · 8</button><button class="f" type="button" data-f="продукт-мягко">продукт-мягко · 4</button><button class="f" type="button" data-f="список">список · 2</button><button class="f" type="button" data-f="сравнение">сравнение · 2</button><button class="f" type="button" data-f="тест">тест · 2</button></div>
+  <p class="note">Видео без звука специально: трендовый звук добавляешь в приложении при загрузке. Примерно 80% роликов дают пользу, около 20% мягко упоминают продукт.</p>
+  <div class="vids"><article class="vid" data-type="польза">
+  <video src="videos/video-01.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#01</span><span class="pill">польза</span></p>
+    <h3>Зрители листают твой ролик через 1 секунду. Вот почему.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Первая фраза решает всё. Большинство начинают с «Привет, сегодня расскажу…». Это не обещание, а вступление. Начни с результата или ошибки: «Ты делаешь X неправильно». Попробуй в следующем ролике.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Зрители уходят через 1 секунду</li><li>Ошибка: «Привет, сегодня расскажу…»</li><li>Начни с ОБЕЩАНИЯ</li><li>«Ты делаешь X неправильно»</li></ol></dd>
+      <dt>Описание</dt><dd>Первая фраза — 80% успеха ролика. Сохрани, чтобы не забыть 👇 #reels #блогинг #контент</dd>
+      <dt>CTA</dt><dd>Сохрани и попробуй в следующем ролике</dd>
+      <dt>Визуал</dt><dd>Палец быстро листает ленту, стоп-кадр, текст крупно</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Первая фраза — 80% успеха ролика. Сохрани, чтобы не забыть 👇 #reels #блогинг #контент">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="польза">
+  <video src="videos/video-02.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#02</span><span class="pill">польза</span></p>
+    <h3>3 хука, которые можно снять прямо сегодня.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Первый: «Я потратил год на эту ошибку, чтобы ты не тратил». Второй: «Вот как выглядит результат через 30 дней». Третий: «Непопулярное мнение…». Выбери один и подставь свою нишу.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>3 хука на сегодня</li><li>1. «Я потратил год на эту ошибку…»</li><li>2. «Вот результат через 30 дней»</li><li>3. «Непопулярное мнение: …»</li></ol></dd>
+      <dt>Описание</dt><dd>Бери любой и снимай сегодня. Ещё 97 — в профиле. #хуки #reels #tiktokсоветы</dd>
+      <dt>CTA</dt><dd>Какой выберешь? Напиши номер</dd>
+      <dt>Визуал</dt><dd>Текст на однотонном фоне, номера появляются по очереди</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Бери любой и снимай сегодня. Ещё 97 — в профиле. #хуки #reels #tiktokсоветы">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="история">
+  <video src="videos/video-03.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#03</span><span class="pill">история</span></p>
+    <h3>Я снял 30 роликов подряд. Вот что изменилось.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Первые 10 роликов были неловкими. К 20-му я перестал думать «что снять», потому что у меня был план. К 30-му я понял, какие темы заходят моей аудитории. Главное — не талант, а система.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>30 роликов подряд</li><li>Ролики 1–10: неловко</li><li>10–20: появился план</li><li>20–30: понял аудиторию</li><li>Главное — система</li></ol></dd>
+      <dt>Описание</dt><dd>Честно о 30 днях контента. А ты пробовал(а) челлендж? #30дней #блогинг</dd>
+      <dt>CTA</dt><dd>Начнёшь свои 30 дней? Пиши «СТАРТ»</dd>
+      <dt>Визуал</dt><dd>Ты листаешь сетку своего профиля, нарезка коротких кадров</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Честно о 30 днях контента. А ты пробовал(а) челлендж? #30дней #блогинг">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="ошибка">
+  <video src="videos/video-04.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#04</span><span class="pill">ошибка</span></p>
+    <h3>Перестань начинать ролик со слова «Привет».</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Алгоритм оценивает первые секунды. «Привет» не даёт зрителю причины остаться. Замени на проблему зрителя: «Если клиенты говорят “дорого” — смотри».</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Стоп: «Привет» в начале</li><li>Зрителю нужна ПРИЧИНА остаться</li><li>Было: «Привет, я мастер…»</li><li>Стало: «Клиенты говорят “дорого”?»</li></ol></dd>
+      <dt>Описание</dt><dd>Мелочь, которая влияет на досмотры. #reels #ошибкиблогера</dd>
+      <dt>CTA</dt><dd>Сохрани, чтобы не забыть</dd>
+      <dt>Визуал</dt><dd>Красный крест на «Привет», зелёная галка на новом варианте</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Мелочь, которая влияет на досмотры. #reels #ошибкиблогера">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="польза">
+  <video src="videos/video-05.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#05</span><span class="pill">польза</span></p>
+    <h3>Как снять ролик, если боишься камеры.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Тебе не обязательно показывать лицо. Три формата без лица: руки в процессе работы, текст на экране поверх видео, запись экрана телефона. Начни с них, а лицо добавишь позже.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Боишься камеры?</li><li>Формат 1: руки в работе</li><li>Формат 2: текст на экране</li><li>Формат 3: запись экрана</li><li>Лицо — потом</li></ol></dd>
+      <dt>Описание</dt><dd>Интровертам посвящается 🫶 #интроверт #блогбезлица</dd>
+      <dt>CTA</dt><dd>Отметь друга, который стесняется камеры</dd>
+      <dt>Визуал</dt><dd>Руки в кадре, лица нет</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Интровертам посвящается 🫶 #интроверт #блогбезлица">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="тест">
+  <video src="videos/video-06.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#06</span><span class="pill">тест</span></p>
+    <h3>Проверил: работает ли хук-вопрос лучше хука-утверждения?</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Снял один и тот же ролик с двумя началами. Вопрос: «Знаешь, почему…?» Утверждение: «Вот почему…». Результаты покажу в своём аккаунте. Ты тоже можешь так тестировать: меняй только первую фразу.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Эксперимент</li><li>Вариант А: вопрос</li><li>Вариант Б: утверждение</li><li>Меняй ТОЛЬКО первую фразу</li><li>Результат — в следующем ролике</li></ol></dd>
+      <dt>Описание</dt><dd>A/B-тест хуков своими руками. Без выдуманных цифр — только мои реальные. #эксперимент #reels</dd>
+      <dt>CTA</dt><dd>Подпишись, чтобы увидеть результат</dd>
+      <dt>Визуал</dt><dd>Сплит-экран: два одинаковых кадра с разным текстом</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="A/B-тест хуков своими руками. Без выдуманных цифр — только мои реальные. #эксперимент #reels">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="список">
+  <video src="videos/video-07.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#07</span><span class="pill">список</span></p>
+    <h3>5 бесплатных инструментов, чтобы делать контент без бюджета.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>CapCut — монтаж. Canva Free — обложки. Встроенный редактор TikTok — субтитры. ИИ-чат (Kimi, Gemini) — сценарии. Заметки телефона — контент-план.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Контент за 0 €</li><li>CapCut — монтаж</li><li>Canva Free — обложки</li><li>TikTok — субтитры</li><li>ИИ-чат — сценарии</li><li>Заметки — план</li></ol></dd>
+      <dt>Описание</dt><dd>Всё бесплатно. Сохрани список 📌 #бесплатныеинструменты #контент</dd>
+      <dt>CTA</dt><dd>Сохрани</dd>
+      <dt>Визуал</dt><dd>Запись экрана с иконками приложений</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Всё бесплатно. Сохрани список 📌 #бесплатныеинструменты #контент">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="мнение">
+  <video src="videos/video-08.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#08</span><span class="pill">мнение</span></p>
+    <h3>Непопулярное мнение: тебе не нужна идея для каждого ролика.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Тебе нужен шаблон. Одна структура и разные темы. Ошибка → исправление. Результат → как. Миф → правда. С тремя шаблонами ты снимаешь месяц без мучений.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Непопулярное мнение</li><li>Идея не нужна</li><li>Нужен ШАБЛОН</li><li>Ошибка → Исправление</li><li>Результат → Как</li><li>Миф → Правда</li></ol></dd>
+      <dt>Описание</dt><dd>Шаблон &gt; вдохновение. Согласен(на)? #мнение #reels</dd>
+      <dt>CTA</dt><dd>Согласен(на)? Пиши в комментарии</dd>
+      <dt>Визуал</dt><dd>Ты в кадре, говоришь уверенно, шаблоны текстом</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Шаблон &gt; вдохновение. Согласен(на)? #мнение #reels">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="продукт-мягко">
+  <video src="videos/video-09.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#09</span><span class="pill">продукт-мягко</span></p>
+    <h3>Я собрал 100 хуков в один файл и вот что заметил.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Почти все сильные хуки — одного из 10 типов: ошибка, результат, любопытство, история и так далее. Если знать типы, хук пишется за минуту. 20 таких хуков я отдаю бесплатно — ссылка в профиле.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>100 хуков = 10 типов</li><li>Ошибка · Результат · Любопытство</li><li>История · Список · Спор</li><li>Знаешь тип → пишешь за минуту</li><li>20 хуков бесплатно → профиль</li></ol></dd>
+      <dt>Описание</dt><dd>Бесплатный мини Хук-Банк — ссылка в профиле. #хуки #reels</dd>
+      <dt>CTA</dt><dd>Забери 20 хуков — ссылка в профиле</dd>
+      <dt>Визуал</dt><dd>Листаешь PDF на телефоне, крупные планы страниц</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Бесплатный мини Хук-Банк — ссылка в профиле. #хуки #reels">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="ошибка">
+  <video src="videos/video-10.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#10</span><span class="pill">ошибка</span></p>
+    <h3>Ролик хороший, но его не досматривают. Проверь это.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Три причины: длинное вступление, нет текста на экране (большинство смотрят без звука), обещание в начале не выполнено в конце. Исправь одну — и сравни.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Не досматривают?</li><li>1. Длинное вступление</li><li>2. Нет текста на экране</li><li>3. Обещание не выполнено</li><li>Исправь одно и сравни</li></ol></dd>
+      <dt>Описание</dt><dd>Чек-лист досмотров. Сохрани 📌 #досматриваемость #reels</dd>
+      <dt>CTA</dt><dd>Какая причина у тебя? 1, 2 или 3?</dd>
+      <dt>Визуал</dt><dd>Таймлайн видео с красными метками проблем</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Чек-лист досмотров. Сохрани 📌 #досматриваемость #reels">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="POV">
+  <video src="videos/video-11.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#11</span><span class="pill">POV</span></p>
+    <h3>POV: ты наконец знаешь, что снимать, на 30 дней вперёд.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Утро. Открываешь план, там написано: «День 12: результат без слов». Снимаешь за 10 минут, публикуешь, живёшь дальше. Так выглядит контент без стресса.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>POV:</li><li>Ты знаешь, что снимать 30 дней</li><li>День 12: результат без слов</li><li>10 минут — и готово</li></ol></dd>
+      <dt>Описание</dt><dd>Мечта любого блогера 😌 #pov #контентплан</dd>
+      <dt>CTA</dt><dd>Хочешь такой план? Пиши «ПЛАН»</dd>
+      <dt>Визуал</dt><dd>Утро, кофе, телефон с таблицей плана</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Мечта любого блогера 😌 #pov #контентплан">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="польза">
+  <video src="videos/video-12.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#12</span><span class="pill">польза</span></p>
+    <h3>Как придумать 30 идей за 10 минут с ИИ (бесплатно).</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Открой бесплатный ИИ-чат. Напиши: «Я [ниша]. Дай 30 вопросов, которые задают мои клиенты». Каждый вопрос — это ролик. Ответ на вопрос — сценарий.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>30 идей за 10 минут</li><li>Открой ИИ-чат (бесплатно)</li><li>Промпт: «Я [ниша]. Дай 30 вопросов клиентов»</li><li>1 вопрос = 1 ролик</li></ol></dd>
+      <dt>Описание</dt><dd>Промпт в описании: «Я [ниша]. Дай 30 вопросов, которые задают мои клиенты». #нейросети #контент</dd>
+      <dt>CTA</dt><dd>Скопируй промпт из описания</dd>
+      <dt>Визуал</dt><dd>Запись экрана чата с ИИ</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Промпт в описании: «Я [ниша]. Дай 30 вопросов, которые задают мои клиенты». #нейросети #контент">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="сравнение">
+  <video src="videos/video-13.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#13</span><span class="pill">сравнение</span></p>
+    <h3>Один и тот же ролик: скучное начало vs сильный хук.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Вариант 1: «Сегодня расскажу про уход за кожей». Вариант 2: «Ты сушишь кожу каждое утро и не знаешь об этом». Какой досмотришь? Вот и зритель так же.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Скучно vs Сильно</li><li>❌ «Сегодня расскажу про уход…»</li><li>✅ «Ты сушишь кожу каждое утро»</li><li>Какой досмотришь?</li></ol></dd>
+      <dt>Описание</dt><dd>Разница в одной фразе. #хук #reels #сравнение</dd>
+      <dt>CTA</dt><dd>Какой лучше: 1 или 2?</dd>
+      <dt>Визуал</dt><dd>Сплит-экран, одинаковый кадр, разный текст</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Разница в одной фразе. #хук #reels #сравнение">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="история">
+  <video src="videos/video-14.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#14</span><span class="pill">история</span></p>
+    <h3>Мой самый провальный ролик научил меня главному.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Я снимал его 3 часа: свет, монтаж, музыка. Просмотров почти нет. А ролик, снятый за 5 минут с сильной первой фразой, разошёлся заметно лучше. Вывод: начало важнее продакшена.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Провал: 3 часа съёмки</li><li>Почти 0 просмотров</li><li>Ролик за 5 минут — лучше</li><li>Начало &gt; продакшн</li></ol></dd>
+      <dt>Описание</dt><dd>Не повторяй мою ошибку. #провал #урок #блогинг</dd>
+      <dt>CTA</dt><dd>Был такой опыт? Расскажи</dd>
+      <dt>Визуал</dt><dd>Ты смотришь в камеру, вставки закулисья</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Не повторяй мою ошибку. #провал #урок #блогинг">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="польза">
+  <video src="videos/video-15.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#15</span><span class="pill">польза</span></p>
+    <h3>Сохрани: формула идеального ролика на 30 секунд.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>0–2 секунды: хук. 2–10: проблема. 10–25: решение по шагам. 25–30: один призыв. Всё. Больше ничего не нужно.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Формула 30 секунд</li><li>0–2 с: ХУК</li><li>2–10 с: проблема</li><li>10–25 с: решение</li><li>25–30 с: 1 призыв</li></ol></dd>
+      <dt>Описание</dt><dd>Шаблон A из Хук-Банка. Сохрани 📌 #формула #reels</dd>
+      <dt>CTA</dt><dd>Сохрани формулу</dd>
+      <dt>Визуал</dt><dd>Таймлайн с цветными блоками</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Шаблон A из Хук-Банка. Сохрани 📌 #формула #reels">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="мнение">
+  <video src="videos/video-16.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#16</span><span class="pill">мнение</span></p>
+    <h3>Хватит говорить, что нужно постить каждый день.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Лучше 3 продуманных ролика в неделю, чем 7 случайных. Регулярность важна, но выгорание убивает аккаунт быстрее, чем пропуск дня. Выбери темп, который выдержишь месяц.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Миф: постить каждый день</li><li>3 сильных &gt; 7 случайных</li><li>Выгорание убивает аккаунт</li><li>Выбери темп на месяц</li></ol></dd>
+      <dt>Описание</dt><dd>Регулярность ≠ каждый день. #миф #блогинг</dd>
+      <dt>CTA</dt><dd>Сколько раз в неделю постишь ты?</dd>
+      <dt>Визуал</dt><dd>Календарь с отметками</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Регулярность ≠ каждый день. #миф #блогинг">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="продукт-мягко">
+  <video src="videos/video-17.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#17</span><span class="pill">продукт-мягко</span></p>
+    <h3>Что я бы сказал себе в первый день блога.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Не жди вдохновения. Сделай банк хуков и план на месяц заранее. Я в итоге так и сделал — собрал Хук-Банк на 100 фраз. Если хочешь начать с 20 бесплатных — ссылка в профиле.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Совет себе в первый день</li><li>Не жди вдохновения</li><li>Сделай банк хуков</li><li>И план на месяц</li><li>20 хуков бесплатно → профиль</li></ol></dd>
+      <dt>Описание</dt><dd>Мой главный совет новичкам. #советы #новичкам</dd>
+      <dt>CTA</dt><dd>Ссылка на бесплатные хуки — в профиле</dd>
+      <dt>Визуал</dt><dd>Ты пишешь в блокноте, переход на PDF</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Мой главный совет новичкам. #советы #новичкам">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="список">
+  <video src="videos/video-18.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#18</span><span class="pill">список</span></p>
+    <h3>3 вопроса перед тем, как снять ролик.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Кому это? Какую одну мысль он запомнит? Зачем ему досматривать до конца? Если не можешь ответить на все три — ролик сырой.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>3 вопроса перед съёмкой</li><li>1. Кому это?</li><li>2. Какая ОДНА мысль?</li><li>3. Зачем досматривать?</li></ol></dd>
+      <dt>Описание</dt><dd>Мини-фильтр для каждого ролика. #контент #советы</dd>
+      <dt>CTA</dt><dd>Сохрани и проверь следующий ролик</dd>
+      <dt>Визуал</dt><dd>Стикеры с вопросами на столе</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Мини-фильтр для каждого ролика. #контент #советы">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="тест">
+  <video src="videos/video-19.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#19</span><span class="pill">тест</span></p>
+    <h3>Пробую снять ролик за 60 секунд от идеи до публикации.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Беру хук из банка, подставляю нишу, снимаю один дубль, ставлю текст на экран, публикую. Таймер идёт. Смотри, уложусь ли.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Челлендж: 60 секунд</li><li>Хук из банка ✔</li><li>Один дубль ✔</li><li>Текст на экран ✔</li><li>Публикую ✔</li></ol></dd>
+      <dt>Описание</dt><dd>Получилось? Смотри до конца ⏱ #челлендж #reels</dd>
+      <dt>CTA</dt><dd>Повтори и отметь меня</dd>
+      <dt>Визуал</dt><dd>Таймер в углу кадра, быстрый монтаж</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Получилось? Смотри до конца ⏱ #челлендж #reels">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="ответ">
+  <video src="videos/video-20.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#20</span><span class="pill">ответ</span></p>
+    <h3>«А если моя ниша скучная?» — отвечаю.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Скучных ниш нет, есть скучные начала. Бухгалтерия: «Ты переплачиваешь налог и не знаешь об этом». Сантехника: «Это пятно на потолке стоит тебе дорого». Хук делает нишу интересной.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>«Моя ниша скучная»</li><li>Скучных ниш нет</li><li>Бухгалтер: «Ты переплачиваешь налог»</li><li>Сантехник: «Это пятно стоит дорого»</li></ol></dd>
+      <dt>Описание</dt><dd>Напиши свою нишу — придумаю хук. #ответ #ниша</dd>
+      <dt>CTA</dt><dd>Напиши свою нишу — отвечу хуком</dd>
+      <dt>Визуал</dt><dd>Скрин комментария + ответ</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Напиши свою нишу — придумаю хук. #ответ #ниша">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="польза">
+  <video src="videos/video-21.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#21</span><span class="pill">польза</span></p>
+    <h3>Текст на экране, который удерживает зрителя.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Пиши крупно, не больше 6 слов. Меняй каждые 2–3 секунды. Держи вверху или по центру, не внизу: там описание и кнопки закрывают текст.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Текст, который держит</li><li>Крупно, ≤ 6 слов</li><li>Меняй каждые 2–3 с</li><li>Не внизу экрана</li></ol></dd>
+      <dt>Описание</dt><dd>Большинство смотрят без звука — текст обязателен. #монтаж #reels</dd>
+      <dt>CTA</dt><dd>Сохрани</dd>
+      <dt>Визуал</dt><dd>Демонстрация безопасных зон на экране</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Большинство смотрят без звука — текст обязателен. #монтаж #reels">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="ошибка">
+  <video src="videos/video-22.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#22</span><span class="pill">ошибка</span></p>
+    <h3>Эта ошибка в описании ролика стоит тебе подписчиков.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>В описании пишут 30 хэштегов и ничего больше. Лучше: одна строка пользы, вопрос к зрителю и 3–5 хэштегов по нише. Вопрос провоцирует комментарии.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Ошибка в описании</li><li>❌ 30 хэштегов</li><li>✅ 1 строка пользы</li><li>✅ Вопрос зрителю</li><li>✅ 3–5 хэштегов</li></ol></dd>
+      <dt>Описание</dt><dd>А как пишешь описание ты? #описание #instagram</dd>
+      <dt>CTA</dt><dd>Покажи своё описание в комментариях</dd>
+      <dt>Визуал</dt><dd>До/после описания на экране</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="А как пишешь описание ты? #описание #instagram">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="история">
+  <video src="videos/video-23.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#23</span><span class="pill">история</span></p>
+    <h3>Год назад я не знал, что снимать. Сегодня у меня план на месяц.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Тогда я открывал приложение и закрывал. Сейчас открываю таблицу: тема, хук, шаблон. Разница не в таланте, а в том, что всё решено заранее.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Год назад: пустой экран</li><li>Сегодня: план на месяц</li><li>Тема · Хук · Шаблон</li><li>Решено заранее</li></ol></dd>
+      <dt>Описание</dt><dd>Система &gt; мотивация. #путь #блогер</dd>
+      <dt>CTA</dt><dd>Хочешь такую систему? Пиши «ПЛАН»</dd>
+      <dt>Визуал</dt><dd>Переход: пустой экран → таблица плана</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Система &gt; мотивация. #путь #блогер">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="польза">
+  <video src="videos/video-24.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#24</span><span class="pill">польза</span></p>
+    <h3>Обложка ролика за 30 секунд в бесплатной Canva.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Шаблон «Instagram Reel». Стоп-кадр из ролика. 3–5 слов крупно. Контрастный цвет. Всё — сохраняешь и ставишь обложкой.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Обложка за 30 сек</li><li>Шаблон Reel в Canva</li><li>Стоп-кадр</li><li>3–5 слов крупно</li><li>Контраст</li></ol></dd>
+      <dt>Описание</dt><dd>Canva Free, без Pro-элементов. #canva #обложка</dd>
+      <dt>CTA</dt><dd>Сохрани</dd>
+      <dt>Визуал</dt><dd>Ускоренная запись экрана Canva</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Canva Free, без Pro-элементов. #canva #обложка">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="сравнение">
+  <video src="videos/video-25.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#25</span><span class="pill">сравнение</span></p>
+    <h3>Длинный ролик vs короткий — что выбрать новичку?</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Короткий (до 30 с) проще досмотреть и проще снять. Длинный работает, если тебе уже доверяют. Новичку — начать с коротких и одной мысли.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Коротко или длинно?</li><li>До 30 с: проще досмотреть</li><li>Длинное — когда доверяют</li><li>Новичку: коротко + 1 мысль</li></ol></dd>
+      <dt>Описание</dt><dd>Без «гарантированных» лайфхаков — просто логика. #новичкам #reels</dd>
+      <dt>CTA</dt><dd>Какие снимаешь ты?</dd>
+      <dt>Визуал</dt><dd>Два таймера рядом</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Без «гарантированных» лайфхаков — просто логика. #новичкам #reels">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="продукт-мягко">
+  <video src="videos/video-26.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#26</span><span class="pill">продукт-мягко</span></p>
+    <h3>Внутри файла, который помог мне перестать выгорать от контента.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Показываю: 10 категорий хуков, сценарии по секундам, план на 30 дней. Это Хук-Банк. 20 хуков из него бесплатно, полная версия — по ссылке в профиле.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Что внутри Хук-Банка</li><li>100 хуков · 10 категорий</li><li>10 сценариев по секундам</li><li>План на 30 дней</li><li>Ссылка в профиле</li></ol></dd>
+      <dt>Описание</dt><dd>Обзор без воды. #хукбанк #reels</dd>
+      <dt>CTA</dt><dd>Ссылка в профиле</dd>
+      <dt>Визуал</dt><dd>Листаешь PDF, крупные планы</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Обзор без воды. #хукбанк #reels">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="день">
+  <video src="videos/video-27.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#27</span><span class="pill">день</span></p>
+    <h3>Как выглядит мой контент-день: 40 минут на неделю роликов.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>10 минут: выбираю 5 хуков из банка. 20 минут: снимаю 5 дублей подряд в одной одежде. 10 минут: текст на экран и отложенная публикация. Остальное делает планировщик.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>40 минут = неделя роликов</li><li>10 мин: 5 хуков</li><li>20 мин: 5 дублей</li><li>10 мин: текст + отложка</li></ol></dd>
+      <dt>Описание</dt><dd>Батч-съёмка экономит часы. #батчинг #продуктивность</dd>
+      <dt>CTA</dt><dd>Попробуй в эти выходные</dd>
+      <dt>Визуал</dt><dd>Нарезка: блокнот, штатив, телефон, планировщик</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Батч-съёмка экономит часы. #батчинг #продуктивность">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="любопытство">
+  <video src="videos/video-28.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#28</span><span class="pill">любопытство</span></p>
+    <h3>Часть 1: я неделю пишу хуки только с помощью ИИ.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Каждый день прошу бесплатный ИИ дать 10 хуков для разных ниш и выбираю лучший. В конце недели покажу, какие сработали, а какие нет — с моими реальными цифрами.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Часть 1</li><li>Неделя хуков от ИИ</li><li>10 хуков в день</li><li>Лучшие — в части 2</li></ol></dd>
+      <dt>Описание</dt><dd>Сериал начинается. Подпишись, чтобы не пропустить. #эксперимент #ии</dd>
+      <dt>CTA</dt><dd>Подпишись, чтобы увидеть часть 2</dd>
+      <dt>Визуал</dt><dd>Экран чата с ИИ, ты реагируешь</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Сериал начинается. Подпишись, чтобы не пропустить. #эксперимент #ии">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="польза">
+  <video src="videos/video-29.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#29</span><span class="pill">польза</span></p>
+    <h3>Промпт, который превращает любую тему в 5 хуков.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>«Ты — сценарист Reels. Тема: [тема]. Напиши 5 первых фраз по типам: ошибка, результат, любопытство, история, спор. До 12 слов каждая». Вставь в любой бесплатный ИИ.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>Промпт на 5 хуков</li><li>«Ты — сценарист Reels»</li><li>«Тема: [тема]»</li><li>«5 типов, до 12 слов»</li><li>Промпт — в описании</li></ol></dd>
+      <dt>Описание</dt><dd>Промпт: «Ты — сценарист Reels. Тема: [тема]. Напиши 5 первых фраз по типам: ошибка, результат, любопытство, история, спор. До 12 слов каждая». #промпт #нейросети</dd>
+      <dt>CTA</dt><dd>Скопируй из описания</dd>
+      <dt>Визуал</dt><dd>Запись экрана с результатом</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Промпт: «Ты — сценарист Reels. Тема: [тема]. Напиши 5 первых фраз по типам: ошибка, результат, любопытство, история, спор. До 12 слов каждая». #промпт #нейросети">Скопировать описание</button>
+  </div>
+</article>
+<article class="vid" data-type="продукт-мягко">
+  <video src="videos/video-30.mp4" controls preload="none" playsinline muted
+    poster="data:image/gif;base64,R0lGODlhAQABAAAAACw="></video>
+  <div class="vid-body">
+    <p class="vid-meta"><span class="mono">#30</span><span class="pill">продукт-мягко</span></p>
+    <h3>30 дней роликов закончились. Вот что дальше.</h3>
+    <dl>
+      <dt>Сценарий</dt><dd>Итоги месяца: что сработало, а что нет — показываю честно. Если хочешь пройти такие же 30 дней, всё, что я использовал, собрано в Хук-Банке. Ссылка в профиле.</dd>
+      <dt>Текст на экране</dt><dd><ol class="screen"><li>30 дней позади</li><li>Что сработало ✔</li><li>Что — нет ✖</li><li>Повтори мой путь → профиль</li></ol></dd>
+      <dt>Описание</dt><dd>Итоги + что дальше. #итоги #30дней</dd>
+      <dt>CTA</dt><dd>Ссылка в профиле</dd>
+      <dt>Визуал</dt><dd>Сетка профиля, итоговые кадры</dd>
+    </dl>
+    <button class="copy" type="button" data-copy="Итоги + что дальше. #итоги #30дней">Скопировать описание</button>
+  </div>
+</article></div>
+</section>
+
+<section data-view="research" hidden><div class="doc"><h2 id="этап-1--10-возможностей-для-цифрового-продукта-с-0">ЭТАП 1 — 10
+возможностей для цифрового продукта с $0</h2>
+<p>Исследование от 22.11.2026. <strong>Честно о данных:</strong> точных
+цифр спроса на русскоязычном рынке в открытых источниках нет. Ниже есть
+только то, что подтверждается источниками: какие категории продаются на
+Etsy, у каких конкурентов есть отзывы и какие цены они ставят. Всё это
+нужно считать <strong>сигналами, а не доказательствами</strong>.
+Настоящую проверку даст только тест (см. п. 10 у каждой идеи).</p>
+<p>Ключевые факты рынка (с источниками):</p>
+<ul>
+<li>По Etsy 2026 разные обзоры сходятся в одном: в топе цифровых товаров
+<strong>планеры/принтаблы, шаблоны Canva, SVG, wall art и свадебные
+шаблоны</strong>. Проверенного рейтинга продаж никто не публикует (<a
+href="https://www.growingyourcraft.com/blog/most-popular-digital-products-on-etsy">growingyourcraft</a>,
+<a
+href="https://www.listadum.com/blog/digital-products-to-sell-on-etsy">listadum</a>).</li>
+<li>По мнению авторов обзоров, лучше продаются продукты «под жизненное
+событие» и узкие ниши, а общие шаблоны тонут (<a
+href="https://smythmyke.github.io/BulkListingPro/blog/2026-etsy-best-sellers-whats-ranking.html">BulkListingPro</a>).</li>
+<li>ADHD/фокус-шаблоны Notion продаются за ~$19 (Payhip), на
+маркетплейсе Notion у них есть отзывы за 2026 год (<a
+href="https://payhip.com/b/8rK09">payhip</a>, <a
+href="https://www.notion.com/templates/adhd-focus-work">notion.com</a>).
+На английском рынке ниша <strong>переполнена</strong>.</li>
+</ul>
+<p>Обозначения: 🟢 подходит для старта, 🟡 можно позже, 🔴 высокий
+риск.</p>
+<hr />
+<h3 id="1--хук-банк-для-reelstiktok-русский-язык">1. 🟢 «Хук-банк» для
+Reels/TikTok (русский язык)</h3>
+<ol type="1">
+<li><strong>Проблема:</strong> авторы и малый бизнес не знают, что
+снимать, и теряют зрителя в первые 2 секунды.</li>
+<li><strong>ЦА:</strong> начинающие блогеры, мастера (ногти, брови,
+кондитеры), эксперты и SMM-фрилансеры, пишущие по-русски.</li>
+<li><strong>Продукт:</strong> PDF/Notion: 100+ хуков по категориям, 10
+шаблонов сценариев, 30-дневный контент-план.</li>
+<li><strong>Зачем покупать:</strong> экономит часы в неделю, снимает
+«ступор перед камерой». Можно сразу копировать и снимать.</li>
+<li><strong>Где аудитория бесплатно:</strong> TikTok/Instagram (хэштеги
+#reels #блогинг), Telegram-чаты блогеров, r/socialmedia (англ.).</li>
+<li><strong>Продвижение:</strong> мета-контент: каждый ролик сам
+построен на хуке из продукта и показывает, что он работает.</li>
+<li><strong>Создание бесплатно:</strong> текст пишет ИИ, PDF собирается
+скриптом в репозитории (уже сделано, см. <code>product/</code>).</li>
+<li><strong>Автоматизация создания:</strong> ИИ генерирует хуки по нише,
+скрипт верстает PDF.</li>
+<li><strong>Автодоставка:</strong> Gumroad/Payhip сами присылают файл
+после оплаты.</li>
+<li><strong>Проверка спроса:</strong> бесплатный мини-PDF (20 хуков) за
+email → считаем подписки → «предзаказ» платной версии.</li>
+<li><strong>Конкуренты:</strong> бесплатные подборки хуков в блогах,
+англоязычные паки на Gumroad/Etsy, курсы по Reels.</li>
+<li><strong>Риски:</strong> много бесплатных альтернатив. Ценность
+должна быть в <strong>адаптации под нишу</strong> и готовых
+сценариях.</li>
+</ol>
+<h3 id="2--планер-антипрокрастинация-pdf-для-печати--notion">2. 🟢
+Планер «Антипрокрастинация» (PDF для печати + Notion)</h3>
+<ol type="1">
+<li><strong>Проблема:</strong> люди начинают и бросают, обычные планеры
+перегружены.</li>
+<li><strong>ЦА:</strong> студенты и фрилансеры 18–35. Отдельный сегмент
+— люди с подозрением на СДВГ (без медицинских обещаний!).</li>
+<li><strong>Продукт:</strong> простой планер «1 главная задача в день» +
+трекер привычек + Notion-версия.</li>
+<li><strong>Зачем:</strong> простота. Конкуренты продвигают ADHD-планеры
+именно через «простые макеты» (<a
+href="https://clickup.com/blog/notion-adhd-templates/">clickup</a>).</li>
+<li><strong>Аудитория:</strong> TikTok #продуктивность #учеба, r/ADHD,
+r/Notion (англ.).</li>
+<li><strong>Продвижение:</strong> POV-ролики «мой день с планером»,
+до/после стола, честные «я провалил день — вот что помогло».</li>
+<li><strong>Создание:</strong> Canva Free или HTML→PDF скриптом, Notion
+Free.</li>
+<li><strong>Автоматизация:</strong> шаблон страниц генерируется
+скриптом, ИИ пишет подсказки.</li>
+<li><strong>Доставка:</strong> Gumroad/Payhip (файл + ссылка на дубликат
+Notion).</li>
+<li><strong>Проверка:</strong> бесплатная 1-недельная версия за
+email.</li>
+<li><strong>Конкуренты:</strong> тысячи планеров на Etsy, бесплатные
+шаблоны Notion.</li>
+<li><strong>Риски:</strong> высокая конкуренция, медицинская тема
+(нельзя обещать «лечение СДВГ»).</li>
+</ol>
+<h3 id="3--шаблоны-canvacapcut-для-мастеров-бьюти-сферы">3. 🟢 Шаблоны
+Canva/CapCut для мастеров бьюти-сферы</h3>
+<ol type="1">
+<li><strong>Проблема:</strong> у мастеров нет времени на дизайн сторис и
+прайсов.</li>
+<li><strong>ЦА:</strong> мастера маникюра, бровей, ресниц,
+парикмахеры.</li>
+<li><strong>Продукт:</strong> 30 шаблонов сторис + прайс + «до/после»
+(ссылка на шаблон Canva).</li>
+<li><strong>Зачем:</strong> профессиональный вид за 5 минут.</li>
+<li><strong>Аудитория:</strong> Instagram (мастера живут там), TikTok
+#маникюр.</li>
+<li><strong>Продвижение:</strong> ролики «превращаю скучную сторис в
+красивую за 30 сек».</li>
+<li><strong>Создание:</strong> Canva Free (шаблоны можно делиться
+ссылкой).</li>
+<li><strong>Автоматизация:</strong> частично. Дизайн придётся делать
+руками в Canva: у бесплатного Canva нет API для генерации.</li>
+<li><strong>Доставка:</strong> PDF со ссылками на шаблоны через
+Gumroad.</li>
+<li><strong>Проверка:</strong> 3 бесплатных шаблона за подписку.</li>
+<li><strong>Конкуренты:</strong> Etsy (Canva-шаблоны в топе категорий),
+бесплатные шаблоны самой Canva.</li>
+<li><strong>Риски:</strong> Canva сама даёт бесплатные шаблоны. Элементы
+Canva Pro нельзя использовать в бесплатном продукте.</li>
+</ol>
+<h3 id="4--бюджет-таблица-google-sheets-зарплата-до-зарплаты">4. 🟡
+Бюджет-таблица Google Sheets «Зарплата до зарплаты»</h3>
+<ol type="1">
+<li><strong>Проблема:</strong> деньги заканчиваются до конца
+месяца.</li>
+<li><strong>ЦА:</strong> молодые 20–35, первая работа, переезд.</li>
+<li><strong>Продукт:</strong> таблица с автоподсчётом, категориями и
+«конвертами».</li>
+<li><strong>Зачем:</strong> проще приложений, без подписки, данные
+остаются у себя.</li>
+<li><strong>Аудитория:</strong> TikTok #финансы #бюджет.</li>
+<li><strong>Продвижение:</strong> «сколько я реально трачу на кофе» с
+экраном таблицы.</li>
+<li><strong>Создание:</strong> Google Sheets (бесплатно), формулы пишет
+ИИ.</li>
+<li><strong>Автоматизация:</strong> высокая, весь продукт —
+формулы.</li>
+<li><strong>Доставка:</strong> ссылка «Создать копию» внутри PDF на
+Gumroad.</li>
+<li><strong>Проверка:</strong> бесплатная упрощённая версия за
+email.</li>
+<li><strong>Конкуренты:</strong> бесплатные шаблоны Google, приложения
+(CoinKeeper, Дзен-мани).</li>
+<li><strong>Риски:</strong> многие ожидают такое бесплатно, низкая
+цена.</li>
+</ol>
+<h3 id="5--пакет-промптов-для-ии-под-профессию">5. 🟡 Пакет промптов для
+ИИ под профессию</h3>
+<ol type="1">
+<li><strong>Проблема:</strong> люди не умеют пользоваться
+ChatGPT/Kimi/Gemini для работы.</li>
+<li><strong>ЦА:</strong> HR, учителя, риелторы, SMM.</li>
+<li><strong>Продукт:</strong> 100 проверенных промптов + примеры
+результатов.</li>
+<li><strong>Зачем:</strong> экономия времени в конкретной
+профессии.</li>
+<li><strong>Аудитория:</strong> TikTok #нейросети, Telegram-каналы по
+ИИ.</li>
+<li><strong>Продвижение:</strong> «этот промпт сэкономил мне 2 часа» +
+показ экрана.</li>
+<li><strong>Создание:</strong> ИИ пишет и тестирует промпты.</li>
+<li><strong>Автоматизация:</strong> очень высокая.</li>
+<li><strong>Доставка:</strong> Gumroad PDF.</li>
+<li><strong>Проверка:</strong> 10 промптов бесплатно.</li>
+<li><strong>Конкуренты:</strong> огромное количество бесплатных
+подборок.</li>
+<li><strong>Риски:</strong> 🔴 рынок перенасыщен, промпты быстро
+устаревают.</li>
+</ol>
+<h3 id="6--чек-листы-переезд-в-польшугрузию">6. 🟡 Чек-листы «Переезд в
+Польшу/Грузию»</h3>
+<ol type="1">
+<li><strong>Проблема:</strong> путаница с документами, банками, жильём
+после переезда.</li>
+<li><strong>ЦА:</strong> русскоязычные релоканты.</li>
+<li><strong>Продукт:</strong> пошаговый чек-лист + шаблоны писем +
+список полезных ссылок.</li>
+<li><strong>Зачем:</strong> экономит недели поиска.</li>
+<li><strong>Аудитория:</strong> Telegram-чаты релокантов, TikTok
+#переездвпольшу.</li>
+<li><strong>Продвижение:</strong> личные истории «ошибка, которая стоила
+мне 2 недели».</li>
+<li><strong>Создание:</strong> ИИ + личный опыт (обязателен!).</li>
+<li><strong>Автоматизация:</strong> средняя, правила меняются и нужна
+ручная проверка.</li>
+<li><strong>Доставка:</strong> Gumroad.</li>
+<li><strong>Проверка:</strong> опрос в чатах + бесплатная часть.</li>
+<li><strong>Конкуренты:</strong> бесплатные Telegram-чаты, юристы,
+блогеры.</li>
+<li><strong>Риски:</strong> юридическая точность, устаревание. Нельзя
+продавать без личной проверки.</li>
+</ol>
+<h3 id="7--мини-курс-монтаж-reels-на-телефоне-за-1-вечер-видеоpdf">7. 🟡
+Мини-курс «Монтаж Reels на телефоне за 1 вечер» (видео/PDF)</h3>
+<ol type="1">
+<li><strong>Проблема:</strong> люди снимают, но не умеют
+монтировать.</li>
+<li><strong>ЦА:</strong> новички-блогеры, малый бизнес.</li>
+<li><strong>Продукт:</strong> 7 коротких уроков (видео без лица, запись
+экрана) + PDF-шпаргалка.</li>
+<li><strong>Зачем:</strong> быстрый практический результат.</li>
+<li><strong>Аудитория:</strong> TikTok/IG.</li>
+<li><strong>Продвижение:</strong> «до/после» монтажа одного клипа.</li>
+<li><strong>Создание:</strong> запись экрана (бесплатно на телефоне),
+CapCut.</li>
+<li><strong>Автоматизация:</strong> низкая, запись требует тебя.</li>
+<li><strong>Доставка:</strong> неопубликованные YouTube-ссылки в PDF на
+Gumroad.</li>
+<li><strong>Проверка:</strong> 1 бесплатный урок.</li>
+<li><strong>Конкуренты:</strong> YouTube (бесплатно).</li>
+<li><strong>Риски:</strong> нужно твоё время. Это <strong>хороший второй
+продукт</strong> после хук-банка.</li>
+</ol>
+<h3 id="8--шаблоны-свадебныхпраздничных-приглашений">8. 🟡 Шаблоны
+свадебных/праздничных приглашений</h3>
+<ol type="1">
+<li><strong>Проблема:</strong> дорого заказывать дизайнера.</li>
+<li><strong>ЦА:</strong> пары, родители (дни рождения детей).</li>
+<li><strong>Продукт:</strong> редактируемые шаблоны Canva.</li>
+<li><strong>Зачем:</strong> привязка к событию, по мнению обзоров Etsy
+такие продукты продаются лучше общих.</li>
+<li><strong>Аудитория:</strong> Pinterest (бесплатно), Instagram.</li>
+<li><strong>Продвижение:</strong> «приглашение за 3 минуты».</li>
+<li><strong>Создание:</strong> Canva Free.</li>
+<li><strong>Автоматизация:</strong> низкая.</li>
+<li><strong>Доставка:</strong> Gumroad PDF со ссылкой.</li>
+<li><strong>Проверка:</strong> бесплатный шаблон.</li>
+<li><strong>Конкуренты:</strong> Etsy, сама Canva.</li>
+<li><strong>Риски:</strong> Etsy берёт плату за листинг, поэтому
+продавать там нельзя по правилу $0. Продаём только через
+Gumroad/Payhip.</li>
+</ol>
+<h3 id="9--детские-развивающие-принтаблы-прописи-раскраски">9. 🔴
+Детские развивающие принтаблы (прописи, раскраски)</h3>
+<ol type="1">
+<li><strong>Проблема:</strong> родителям нужны занятия для детей без
+экрана.</li>
+<li><strong>ЦА:</strong> мамы детей 3–7 лет.</li>
+<li><strong>Продукт:</strong> PDF-наборы заданий по темам.</li>
+<li><strong>Зачем:</strong> готово к печати, тематично.</li>
+<li><strong>Аудитория:</strong> Instagram-мамы, Pinterest.</li>
+<li><strong>Продвижение:</strong> «чем занять ребёнка 30 минут».</li>
+<li><strong>Создание:</strong> ИИ-картинки + верстка.</li>
+<li><strong>Автоматизация:</strong> высокая.</li>
+<li><strong>Доставка:</strong> Gumroad.</li>
+<li><strong>Проверка:</strong> бесплатный лист.</li>
+<li><strong>Конкуренты:</strong> очень много бесплатного.</li>
+<li><strong>Риски:</strong> качество ИИ-иллюстраций, авторские права на
+персонажей.</li>
+</ol>
+<h3 id="10--готовые-telegram-ботыавтоматизации-под-ключ-шаблон">10. 🔴
+Готовые Telegram-боты/автоматизации «под ключ» (шаблон)</h3>
+<ol type="1">
+<li><strong>Проблема:</strong> малому бизнесу нужна запись клиентов без
+администратора.</li>
+<li><strong>ЦА:</strong> мастера, репетиторы.</li>
+<li><strong>Продукт:</strong> инструкция + шаблон бесплатного бота
+записи (Google Forms + Sheets).</li>
+<li><strong>Зачем:</strong> экономия на администраторе.</li>
+<li><strong>Аудитория:</strong> Instagram мастеров.</li>
+<li><strong>Продвижение:</strong> демо «клиент записался, пока я
+спал».</li>
+<li><strong>Создание:</strong> бесплатные инструменты Google.</li>
+<li><strong>Автоматизация:</strong> высокая.</li>
+<li><strong>Доставка:</strong> Gumroad.</li>
+<li><strong>Проверка:</strong> лист ожидания.</li>
+<li><strong>Конкуренты:</strong> YCLIENTS, DIKIDI (у DIKIDI есть
+бесплатный тариф).</li>
+<li><strong>Риски:</strong> поддержка пользователей отнимает время, а
+цель — минимум твоего участия.</li>
+</ol>
+<hr />
+<h3 id="выбор-для-теста">Выбор для теста</h3>
+<div class="tw"><table>
+<thead>
+<tr class="header">
+<th>Место</th>
+<th>Идея</th>
+<th>Почему</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>1 (строим сейчас)</strong></td>
+<td>Хук-банк для Reels</td>
+<td>ИИ может сделать 100% продукта. Мета-продвижение (продукт =
+контент), совпадает с твоим профилем (Reels/сторителлинг). Нулевые
+затраты времени на дизайн</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Планер «Антипрокрастинация»</td>
+<td>Подтверждённая категория (планеры в топе Etsy), можно собрать
+скриптом</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Мини-курс монтажа</td>
+<td>Второй продукт для тех же покупателей (upsell)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Источники: <a
+href="https://printify.com/blog/leading-trends-for-etsy-sellers-in-2026/">Etsy-тренды
+2026</a>, <a
+href="https://www.outfy.com/blog/top-selling-digital-products-on-etsy/">Outfy</a>,
+<a href="https://clickup.com/blog/notion-adhd-templates/">ClickUp
+ADHD</a>, <a href="https://payhip.com/b/8rK09">Payhip ADHD
+Planner</a>.</p>
+</div></section>
+<section data-view="launch" hidden><div class="doc"><h2 id="этапы-24--mvp-продажа-сайт">ЭТАПЫ 2–4 — MVP, продажа, сайт</h2>
+<h3 id="этап-2--mvp-хук-банк--уже-создан">ЭТАП 2 — MVP «Хук-Банк» ✅ уже
+создан</h3>
+<div class="tw"><table>
+<thead>
+<tr class="header">
+<th>Элемент</th>
+<th>Готово</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Название</strong></td>
+<td>ХУК-БАНК — 100 первых фраз, 10 сценариев и 30-дневный план для Reels
+и TikTok</td>
+</tr>
+<tr class="even">
+<td><strong>Структура</strong></td>
+<td>Инструкция → 10 категорий × 10 хуков → 10 шаблонов сценариев → план
+на 30 дней → чек-лист</td>
+</tr>
+<tr class="odd">
+<td><strong>Содержание</strong></td>
+<td><code>business/product/hook-bank.md</code> (полный текст)</td>
+</tr>
+<tr class="even">
+<td><strong>Файлы</strong></td>
+<td><code>business/product/dist/hook-bank-full.pdf</code> (16 стр.) и
+<code>hook-bank-free.pdf</code> (5 стр., лид-магнит)</td>
+</tr>
+<tr class="odd">
+<td><strong>Дизайн-концепция</strong></td>
+<td>Тёмно-фиолетовый + бирюзовый акцент, как у твоего сайта. Крупная
+типографика, всё читается с телефона. Тот же стиль в видео, PDF и на
+странице, чтобы бренд узнавали</td>
+</tr>
+<tr class="even">
+<td><strong>Инструкция</strong></td>
+<td>Раздел «Как пользоваться (2 минуты)» в начале PDF</td>
+</tr>
+<tr class="odd">
+<td><strong>FAQ / продающий текст / CTA</strong></td>
+<td>На странице <code>shop/index.html</code> и ниже</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Описание (для Gumroad/Payhip):</strong></p>
+<blockquote>
+<p>Хук-Банк — это 100 готовых первых фраз для Reels и TikTok, 10
+сценариев, расписанных по секундам, и контент-план на 30 дней.
+Открываешь, подставляешь свою нишу вместо [скобок] и снимаешь. Для
+мастеров, экспертов, малого бизнеса и начинающих блогеров. PDF, 16
+страниц, на русском. Не гарантирует просмотров — экономит время и даёт
+структуры, которые ты проверяешь на своей аудитории.</p>
+</blockquote>
+<p><strong>Короткий продающий текст (для био/постов):</strong></p>
+<blockquote>
+<p>Не знаешь, что снять? 100 хуков + план на 30 дней. 20 хуков —
+бесплатно 👇</p>
+</blockquote>
+<p><strong>CTA:</strong> «Скачать 20 хуков бесплатно» (основной) →
+«Получить полную версию» (вторичный).</p>
+<p><strong>Цена — гипотеза для теста, а не факт:</strong> начать с
+«Заплати сколько хочешь, минимум 0» на 2 недели, затем фикс 5–9 €.
+Конкуренты на английском берут больше, но данных о русскоязычном рынке у
+меня нет, поэтому цену определит тест.</p>
+<hr />
+<h3 id="этап-3--приём-оплаты-без-вложений">ЭТАП 3 — Приём оплаты без
+вложений</h3>
+<p>Цифры по комиссиям — из сторонних обзоров 2026 года. Перед
+регистрацией сверь на официальной странице.</p>
+<div class="tw"><table>
+<thead>
+<tr class="header">
+<th>Сервис</th>
+<th>Ежемесячная плата</th>
+<th>Комиссия (только после продажи)</th>
+<th>Автодоставка файла</th>
+<th>Сбор email</th>
+<th>Замечания</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Gumroad</strong> ⭐</td>
+<td>0</td>
+<td>~10% + <span
+class="math inline">0.50<em>с</em><em>п</em><em>р</em><em>о</em><em>д</em><em>а</em><em>ж</em><em>и</em>, <em>п</em><em>о</em><em>р</em><em>я</em><em>д</em><em>у</em><em>и</em><em>с</em><em>т</em><em>о</em><em>ч</em><em>н</em><em>и</em><em>к</em><em>о</em><em>в</em> + <em>о</em><em>б</em><em>р</em><em>а</em><em>б</em><em>о</em><em>т</em><em>к</em><em>а</em><em>к</em><em>а</em><em>р</em><em>т</em><em>ы</em>.<em>Б</em><em>е</em><em>с</em><em>п</em><em>л</em><em>а</em><em>т</em><em>н</em><em>ы</em><em>е</em><em>т</em><em>о</em><em>в</em><em>а</em><em>р</em><em>ы</em>(</span>0)
+— без комиссии</td>
+<td>✅</td>
+<td>✅</td>
+<td>Минимальная выплата, по одному источнику, $100 до верификации
+личности, $10 после (<a
+href="https://sellfy.com/blog/gumroad-pricing/">sellfy</a>, <a
+href="https://checkoutpage.com/blog/gumroad-fees">checkoutpage</a>)</td>
+</tr>
+<tr class="even">
+<td><strong>Payhip</strong></td>
+<td>0 (Free plan)</td>
+<td>~5% + комиссия PayPal/Stripe</td>
+<td>✅</td>
+<td>✅</td>
+<td>Эффективно около 8% при типичной цене (<a
+href="https://www.getly.store/blog/lemon-squeezy-vs-payhip">getly</a>)</td>
+</tr>
+<tr class="odd">
+<td><strong>Ko-fi Shop</strong></td>
+<td>0</td>
+<td>5% на бесплатном плане за продажи в магазине</td>
+<td>✅</td>
+<td>частично</td>
+<td>Донаты без комиссии платформы (<a
+href="https://payhip.com/blog/ko-fi-alternatives/">payhip blog</a>)</td>
+</tr>
+<tr class="even">
+<td><del>Lemon Squeezy</del></td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>❌ НЕ используем: по одному источнику регистрация закрыта
+16.11.2026, закрытие 31.03.2027 (<a
+href="https://checkoutpage.com/tools/lemon-squeezy-fee-calculator">checkoutpage</a>)</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Решение:</strong> <strong>Gumroad</strong>. Один сервис
+закрывает приём денег, доставку файла, сбор email и статистику
+просмотров страницы.</p>
+<p>⚠️ <strong>Важно, решаешь ты:</strong> выплаты Gumroad/Payhip идут на
+банковский счёт/PayPal. Если твой банк — в стране, которую эти сервисы
+не поддерживают, выплат не будет. Проверь список стран при регистрации
+<strong>до</strong> запуска рекламы продукта.</p>
+<p><strong>Проверка спроса до реальных продаж (100%
+бесплатно):</strong></p>
+<ol type="1">
+<li>Бесплатный товар на Gumroad «Хук-Банк мини» за $0 → Gumroad собирает
+email и показывает число скачиваний.</li>
+<li>Платный товар «Хук-Банк» с ценой «от 0» (pay what you want). Сколько
+людей сами ставят сумму &gt; 0 — это сигнал готовности платить.</li>
+<li>Метрики: просмотры страницы → скачивания → платежи. Gumroad
+показывает их бесплатно.</li>
+</ol>
+<hr />
+<h3 id="этап-4--бесплатный-сайт--уже-создан">ЭТАП 4 — Бесплатный сайт ✅
+уже создан</h3>
+<ul>
+<li><strong>Где:</strong> <code>shop/index.html</code> в твоём
+репозитории → GitHub Pages (уже настроен, бесплатно, без домена).</li>
+<li><strong>Адрес после слияния в main:</strong>
+<code>https://maksiulo.github.io/Maksiulo/shop/</code></li>
+<li><strong>Ограничения GitHub Pages:</strong> сайт ≤ 1 ГБ, мягкий лимит
+трафика 100 ГБ/мес. Нельзя использовать как платформу для коммерческого
+SaaS, но страница продукта со ссылкой на внешнюю оплату — обычный
+сценарий. Перед стартом всё же прочитай правила GitHub Pages.</li>
+<li><strong>Что поменять тебе (1 раз, 2 минуты):</strong> в конце файла
+блок <code>CONFIG</code>: вставить 2 ссылки Gumroad и цену.</li>
+</ul>
+<p><strong>Структура страницы:</strong> Hero (заголовок + 2 кнопки) →
+«Знакомо?» (3 боли) → «Что внутри» (4 карточки + 3 примера хуков) → «Как
+пользоваться» (3 шага) → Цена + CTA + честная оговорка → FAQ (5
+вопросов).</p>
+<div class="tw"><table>
+<thead>
+<tr class="header">
+<th>Блок</th>
+<th>Текст</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Заголовок</td>
+<td>Больше никакого «что снять сегодня?»</td>
+</tr>
+<tr class="even">
+<td>Подзаголовок</td>
+<td>100 готовых первых фраз, 10 сценариев по секундам и план на 30 дней.
+Открыл, подставил свою нишу, снял.</td>
+</tr>
+<tr class="odd">
+<td>Преимущества</td>
+<td>100 хуков в 10 категориях · 10 сценариев по секундам · план на 30
+дней · чек-лист публикации</td>
+</tr>
+<tr class="even">
+<td>CTA</td>
+<td>Скачать 20 хуков бесплатно / Получить Хук-Банк</td>
+</tr>
+<tr class="odd">
+<td>FAQ</td>
+<td>Подойдёт для ниши? · Формат? · Как получу? · Чем отличается от
+бесплатных подборок? · Можно бесплатно?</td>
+</tr>
+</tbody>
+</table></div>
+</div></section>
+<section data-view="plan" hidden><div class="doc"><h2 id="этапы-69--автоматизация-твоя-роль-30-дней-правила">ЭТАПЫ 6–9 —
+Автоматизация, твоя роль, 30 дней, правила</h2>
+<h3 id="этап-6--бесплатный-workflow">ЭТАП 6 — Бесплатный workflow</h3>
+<div class="tw"><table>
+<thead>
+<tr class="header">
+<th>Шаг</th>
+<th>Бесплатный инструмент (лимиты)</th>
+<th>Что делает ИИ</th>
+<th>Что делает автоматизация</th>
+<th>Что делаешь ты</th>
+<th>Авто</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Поиск проблем</td>
+<td>Claude Code (эта сессия) / Kimi / Gemini — бесплатные чаты</td>
+<td>Ищет боли в комментариях, на Reddit, в обзорах</td>
+<td>—</td>
+<td>Ничего</td>
+<td>90%</td>
+</tr>
+<tr class="even">
+<td>Анализ спроса</td>
+<td>Google Trends, поиск TikTok, отзывы конкурентов</td>
+<td>Сравнивает сигналы, пишет вывод «тестировать / нет»</td>
+<td>—</td>
+<td>Решаешь «да/нет» (1 мин)</td>
+<td>80%</td>
+</tr>
+<tr class="odd">
+<td>Идея</td>
+<td>Этот репозиторий (<code>business/</code>)</td>
+<td>Пишет концепцию и структуру продукта</td>
+<td>—</td>
+<td>Утверждаешь</td>
+<td>90%</td>
+</tr>
+<tr class="even">
+<td>Создание продукта</td>
+<td>Markdown + <code>build_product.py</code> + pandoc + Chrome</td>
+<td>Пишет весь текст</td>
+<td>GitHub Actions собирает PDF при каждом изменении</td>
+<td>Ничего</td>
+<td>95%</td>
+</tr>
+<tr class="odd">
+<td>Создание контента</td>
+<td><code>videos.json</code> + <code>render_videos.py</code> +
+ffmpeg</td>
+<td>Пишет хуки, сценарии, описания</td>
+<td>GitHub Actions рендерит 30 MP4 + CSV-расписание</td>
+<td>Для роликов с лицом — снимаешь пачкой (батч)</td>
+<td>70–100%</td>
+</tr>
+<tr class="even">
+<td>Публикация</td>
+<td><strong>Buffer Free:</strong> 3 канала, очередь до 10 постов на
+канал (<a href="https://buffer.com/pricing">buffer</a>). Запасной
+вариант: встроенное планирование в Meta Business Suite (IG) и веб-версия
+TikTok</td>
+<td>—</td>
+<td>Публикует по расписанию</td>
+<td>Раз в 10 дней загружаешь 10 роликов + выбираешь трендовый звук</td>
+<td>80%</td>
+</tr>
+<tr class="odd">
+<td>Переход на страницу</td>
+<td>Ссылка в био → GitHub Pages <code>/shop/</code></td>
+<td>—</td>
+<td>Работает 24/7</td>
+<td>—</td>
+<td>100%</td>
+</tr>
+<tr class="even">
+<td>Заказ</td>
+<td>Gumroad (0/мес, комиссия только с продажи)</td>
+<td>—</td>
+<td>Оплата</td>
+<td>—</td>
+<td>100%</td>
+</tr>
+<tr class="odd">
+<td>Выдача продукта</td>
+<td>Gumroad</td>
+<td>—</td>
+<td>Автоматически отправляет PDF на email</td>
+<td>—</td>
+<td>100%</td>
+</tr>
+<tr class="even">
+<td>Сбор результатов</td>
+<td>TikTok Studio / Instagram Insights / Gumroad Analytics</td>
+<td>Читает скриншоты, сводит в таблицу</td>
+<td>—</td>
+<td>1 раз в неделю: 3 скриншота (2 мин)</td>
+<td>60%</td>
+</tr>
+<tr class="odd">
+<td>Анализ</td>
+<td>Claude Code — запланированная задача раз в неделю</td>
+<td>Пишет вывод: какие хуки сработали, что менять</td>
+<td>Сессия запускается сама по расписанию</td>
+<td>Читаешь вывод (3 мин)</td>
+<td>90%</td>
+</tr>
+<tr class="even">
+<td>Новый тест</td>
+<td><code>videos.json</code></td>
+<td>Пишет 10 новых роликов по лучшим типам хуков</td>
+<td>Action пересобирает видео</td>
+<td>Говоришь «ок»</td>
+<td>90%</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="что-не-автоматизируется-полностью-и-почему">Что НЕ
+автоматизируется полностью и почему</h4>
+<ol type="1">
+<li><strong>Публикация в TikTok через API.</strong> TikTok Content
+Posting API требует аудита приложения; без аудита посты публикуются
+только как приватные. <strong>Замена:</strong> Buffer Free или
+встроенный планировщик. Тогда ручной работы остаётся ~5 минут раз в 10
+дней.</li>
+<li><strong>Выбор трендового звука.</strong> Библиотека звуков доступна
+только внутри приложений. Видео делаются без звука специально, чтобы ты
+добавил(а) тренд за 10 секунд при загрузке.</li>
+<li><strong>Instagram Graph API</strong> технически бесплатен, но
+требует бизнес-аккаунта, приложения Meta и публичной ссылки на видео.
+Это та самая «сложная технология без необходимости». Buffer делает то же
+без настройки.</li>
+<li><strong>Ответы на комментарии.</strong> Автоответы ботами нарушают
+дух платформ и рискуют блокировкой. <strong>Замена:</strong> готовые
+шаблоны ответов (ИИ пишет), ты вставляешь. Делать это нужно только
+первые недели, пока комментариев мало.</li>
+<li><strong>Выплаты.</strong> Подключение банка — юридическое действие,
+делаешь только ты, один раз.</li>
+</ol>
+<hr />
+<h3 id="этап-7--твоё-минимальное-участие">ЭТАП 7 — Твоё минимальное
+участие</h3>
+<p><strong>Разовая настройка (≈ 2 часа всего, дни 1–4):</strong>
+аккаунты, Gumroad, Buffer, слияние сайта.</p>
+<p><strong>Регулярно после настройки:</strong></p>
+<div class="tw"><table>
+<thead>
+<tr class="header">
+<th>Когда</th>
+<th>Что</th>
+<th>Время</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Раз в 10 дней</td>
+<td>Загрузить 10 готовых MP4 в Buffer, добавить звук</td>
+<td>~20 мин</td>
+</tr>
+<tr class="even">
+<td>Раз в неделю</td>
+<td>3 скриншота аналитики → отправить ИИ</td>
+<td>2 мин</td>
+</tr>
+<tr class="odd">
+<td>Раз в неделю</td>
+<td>Прочитать отчёт, ответить «ок» / «меняем»</td>
+<td>3 мин</td>
+</tr>
+<tr class="even">
+<td>Ежедневно (опционально, первые 2 недели)</td>
+<td>Ответить на комментарии шаблонами</td>
+<td>5–10 мин</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Итого: ~1 час в неделю</strong> после настройки. Это оценка,
+а не гарантия: если ролики с лицом заходят лучше, добавится время на
+батч-съёмку.</p>
+<hr />
+<h3 id="этап-8--30-дней">ЭТАП 8 — 30 дней</h3>
+<div class="tw"><table>
+<thead>
+<tr class="header">
+<th>День</th>
+<th>Действие</th>
+<th>Инструмент</th>
+<th>ИИ делает</th>
+<th>Ты делаешь</th>
+<th>Результат</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Создать аккаунты TikTok + Instagram (Professional/Creator)</td>
+<td>TikTok, Instagram</td>
+<td>Пишет имя, био, 3 варианта аватара-идеи</td>
+<td>Регистрируешь, вставляешь био</td>
+<td>2 аккаунта</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Завести Gumroad, 2 товара: «мини» ($0) и «полный» (от $0)</td>
+<td>Gumroad</td>
+<td>Готов текст описания (этап 2)</td>
+<td>Регистрация, загрузка 2 PDF, проверка выплат в твою страну</td>
+<td>Рабочие ссылки на оплату</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Запустить страницу продукта</td>
+<td>GitHub Pages</td>
+<td>Вставляет ссылки в <code>CONFIG</code>, готовит слияние в main</td>
+<td>Присылаешь мне 2 ссылки, разрешаешь слияние</td>
+<td>Сайт <code>/shop/</code> онлайн</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td>Подключить Buffer, загрузить ролики 1–10</td>
+<td>Buffer Free</td>
+<td>Подписи готовы в <code>schedule.csv</code></td>
+<td>Загружаешь 10 MP4 + звук</td>
+<td>Публикации на 10 дней вперёд</td>
+</tr>
+<tr class="odd">
+<td>5</td>
+<td>Ссылка в био + закреп</td>
+<td>TikTok/IG</td>
+<td>Текст закрепа</td>
+<td>Вставляешь ссылку</td>
+<td>Путь «ролик → сайт» замкнут</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td>Наблюдение</td>
+<td>—</td>
+<td>—</td>
+<td>Ничего</td>
+<td>Первые данные</td>
+</tr>
+<tr class="odd">
+<td>7</td>
+<td>Отчёт недели 1</td>
+<td>Claude (запланированная задача)</td>
+<td>Анализ скриншотов</td>
+<td>3 скриншота</td>
+<td>Знаем, какие хуки цепляют</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td>Шаблоны ответов на комментарии</td>
+<td>Claude/Kimi</td>
+<td>15 шаблонов ответов</td>
+<td>Отвечаешь 5 мин</td>
+<td>Вовлечённость</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td>Подготовить 10 новых роликов по лучшим типам</td>
+<td><code>videos.json</code> + Actions</td>
+<td>Пишет новые сценарии</td>
+<td>«ок»</td>
+<td>Роликов хватает до дня 24</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td>Первый ролик с лицом/руками (тест формата)</td>
+<td>Камера телефона</td>
+<td>Сценарий из шаблона A</td>
+<td>Снимаешь 3 дубля за 15 мин</td>
+<td>Сравнение: текст vs лицо</td>
+</tr>
+<tr class="odd">
+<td>11</td>
+<td>Загрузить ролики 11–20</td>
+<td>Buffer</td>
+<td>—</td>
+<td>20 мин</td>
+<td>Очередь заполнена</td>
+</tr>
+<tr class="even">
+<td>12</td>
+<td>Опрос в сторис «Какая у тебя ниша?»</td>
+<td>IG Stories</td>
+<td>Текст опроса</td>
+<td>1 мин</td>
+<td>Данные для персонализации</td>
+</tr>
+<tr class="odd">
+<td>13</td>
+<td>Наблюдение</td>
+<td>—</td>
+<td>—</td>
+<td>Ничего</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>14</td>
+<td>Отчёт недели 2 + решение по цене</td>
+<td>Claude + Gumroad</td>
+<td>Сравнивает: скачивания, суммы «pay what you want»</td>
+<td>Решаешь фикс-цену</td>
+<td>Цена на основе данных</td>
+</tr>
+<tr class="odd">
+<td>15</td>
+<td>Обновить продукт по комментариям</td>
+<td><code>hook-bank.md</code></td>
+<td>Добавляет хуки под частые ниши</td>
+<td>«ок»</td>
+<td>Версия 1.1 (PDF собирается сам)</td>
+</tr>
+<tr class="even">
+<td>16</td>
+<td>Батч-съёмка 5 роликов с лицом (если тест дня 10 выиграл)</td>
+<td>Телефон</td>
+<td>5 сценариев</td>
+<td>30 мин</td>
+<td>Контент на неделю</td>
+</tr>
+<tr class="odd">
+<td>17</td>
+<td>Ответ видео на лучший комментарий (шаблон G)</td>
+<td>TikTok</td>
+<td>Сценарий</td>
+<td>10 мин</td>
+<td>Ролик с высокой вовлечённостью</td>
+</tr>
+<tr class="even">
+<td>18</td>
+<td>Наблюдение</td>
+<td>—</td>
+<td>—</td>
+<td>Ничего</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>19</td>
+<td>Пост в 2–3 бесплатных Telegram-чата блогеров (где разрешено)</td>
+<td>Telegram</td>
+<td>Текст «польза + ссылка на бесплатное»</td>
+<td>5 мин</td>
+<td>Доп. трафик</td>
+</tr>
+<tr class="even">
+<td>20</td>
+<td>Загрузить ролики 21–30</td>
+<td>Buffer</td>
+<td>—</td>
+<td>20 мин</td>
+<td>Очередь до дня 30</td>
+</tr>
+<tr class="odd">
+<td>21</td>
+<td>Отчёт недели 3</td>
+<td>Claude</td>
+<td>Анализ воронки: просмотры → клики → скачивания → оплаты</td>
+<td>3 скриншота</td>
+<td>Видим узкое место</td>
+</tr>
+<tr class="even">
+<td>22</td>
+<td>Улучшить узкое место (хук / страницу / цену)</td>
+<td>По ситуации</td>
+<td>Предлагает 2 варианта A/B</td>
+<td>Выбираешь</td>
+<td>Один A/B-тест</td>
+</tr>
+<tr class="odd">
+<td>23</td>
+<td>Письмо всем, кто скачал мини-версию</td>
+<td>Gumroad (рассылка подписчикам — проверь, доступна ли на бесплатном
+тарифе)</td>
+<td>Пишет письмо</td>
+<td>Нажимаешь «отправить»</td>
+<td>Конверсия бесплатных → платных</td>
+</tr>
+<tr class="even">
+<td>24</td>
+<td>Наблюдение</td>
+<td>—</td>
+<td>—</td>
+<td>Ничего</td>
+<td>—</td>
+</tr>
+<tr class="odd">
+<td>25</td>
+<td>Подготовить продукт №2 (планер или мини-курс) — только описание</td>
+<td><code>business/</code></td>
+<td>Концепция + страница</td>
+<td>«да/нет»</td>
+<td>Upsell готов к тесту</td>
+</tr>
+<tr class="even">
+<td>26</td>
+<td>Ролик-тизер продукта №2</td>
+<td>render_videos.py</td>
+<td>Сценарий</td>
+<td>Загрузить</td>
+<td>Проверка интереса</td>
+</tr>
+<tr class="odd">
+<td>27</td>
+<td>Собрать отзывы (с разрешения покупателей)</td>
+<td>Gumroad/Tally</td>
+<td>Текст запроса отзыва</td>
+<td>Отправить</td>
+<td>Социальное доказательство</td>
+</tr>
+<tr class="even">
+<td>28</td>
+<td>Добавить реальные отзывы на страницу</td>
+<td>GitHub Pages</td>
+<td>Вставляет на сайт</td>
+<td>«ок»</td>
+<td>Выше доверие</td>
+</tr>
+<tr class="odd">
+<td>29</td>
+<td>Итоговый отчёт 30 дней</td>
+<td>Claude</td>
+<td>Полный анализ + план на месяц 2</td>
+<td>5 мин чтения</td>
+<td>Решение: масштабировать / менять нишу</td>
+</tr>
+<tr class="even">
+<td>30</td>
+<td>Ролик «30 дней — итоги» + план месяца 2</td>
+<td>Buffer</td>
+<td>Сценарий (ролик 30)</td>
+<td>Решения по плану</td>
+<td>Цикл повторяется уже на автомате</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h3 id="этап-9--правила-зафиксированы">ЭТАП 9 — Правила
+(зафиксированы)</h3>
+<ul>
+<li>Никаких обещаний дохода, ни в продукте, ни в роликах. Везде стоит
+честная оговорка.</li>
+<li>Никакой выдуманной статистики: в сценариях стоят пометки «подставь
+своё реальное число».</li>
+<li>Только бесплатные инструменты. Lemon Squeezy исключён (закрывается),
+Etsy исключён (платные листинги), Make.com не нужен (1000 кредитов/мес и
+2 сценария; GitHub Actions покрывает то же бесплатно).</li>
+<li>Всё, что можно, автоматизировано. Ручные шаги перечислены выше с
+причинами.</li>
+<li>Принцип: <strong>$0 → MVP ✅ → тестирование (дни 1–14) → первые
+пользователи (7–21) → улучшение (15–28) → автоматизация (уже) →
+масштабирование (месяц 2).</strong></li>
+</ul>
+</div></section>
+
+</main>
+
+<script>
+(function(){
+  const views=[...document.querySelectorAll("section[data-view]")];
+  const links=[...document.querySelectorAll("nav.tabs a")];
+  function show(){
+    const id=(location.hash||"#overview").slice(1);
+    const name=views.some(v=>v.dataset.view===id)?id:"overview";
+    views.forEach(v=>v.hidden=v.dataset.view!==name);
+    links.forEach(a=>a.setAttribute("aria-current",a.getAttribute("href")==="#"+name?"page":"false"));
+  }
+  window.addEventListener("hashchange",()=>{show();window.scrollTo(0,0)});
+  show();
+
+  function copy(text,btn,label){
+    const done=()=>{btn.textContent="Скопировано";setTimeout(()=>btn.textContent=label,1400)};
+    try{navigator.clipboard.writeText(text).then(done,()=>fallback())}catch(e){fallback()}
+    function fallback(){const r=document.createRange();r.selectNodeContents(btn.parentElement);const s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent="Выделено — нажми Ctrl+C"}
+  }
+  document.querySelectorAll(".doc.product ol li").forEach(li=>{
+    const text=li.textContent.trim();
+    const b=document.createElement("button");b.type="button";b.className="hc";b.textContent="Копировать";
+    b.addEventListener("click",()=>copy(text,b,"Копировать"));li.appendChild(b);
+  });
+  document.querySelectorAll(".copy").forEach(b=>b.addEventListener("click",()=>copy(b.dataset.copy,b,"Скопировать описание")));
+
+  const fs=[...document.querySelectorAll(".f")];
+  fs.forEach(f=>f.addEventListener("click",()=>{
+    fs.forEach(x=>x.classList.toggle("on",x===f));
+    document.querySelectorAll(".vid").forEach(v=>v.hidden=!!f.dataset.f&&v.dataset.type!==f.dataset.f);
+  }));
+})();
+</script>
