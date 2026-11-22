@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <title>Glint — коллекционные подарки</title>
+  <meta name="description" content="Glint — Telegram Mini App: собирай, сплавляй и обменивай коллекционные NFT-подарки." />
+  <meta name="theme-color" content="#06060b" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="noise" aria-hidden="true"></div>
+
+  <div class="app" id="app">
+    <header class="top">
+      <button class="me" id="meBtn" aria-label="Профиль">
+        <span class="me__ava">G</span>
+        <span class="me__txt"><b id="meName">Glint</b><small>Сезон 1 · ур. <span id="meLvl">1</span></small></span>
+      </button>
+      <div class="wallet glass" id="wallet">
+        <span class="star">★</span><b id="balance">—</b>
+        <button class="wallet__add" id="topUp" aria-label="Пополнить">+</button>
+      </div>
+    </header>
+
+    <main id="view" class="view"></main>
+  </div>
+
+  <nav class="tabs glass" id="tabs" aria-label="Навигация">
+    <button data-tab="home" class="on"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z"/></svg><span>Дроп</span></button>
+    <button data-tab="vault"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg><span>Коллекция</span></button>
+    <button data-tab="forge" class="tabs__forge"><svg viewBox="0 0 24 24"><path d="M12 3c1.5 3.5 5 5 5 9.5A5 5 0 0 1 7 12.5C7 10 8.5 8.6 9.5 7.5 9.7 9.4 10.6 10.5 12 11c-.4-2.6-.4-5.2 0-8z"/></svg><span>Кузня</span></button>
+    <button data-tab="market"><svg viewBox="0 0 24 24"><path d="M4 9h16l-1.2 9.2a2 2 0 0 1-2 1.8H7.2a2 2 0 0 1-2-1.8zM8.5 9V7.5a3.5 3.5 0 0 1 7 0V9"/></svg><span>Маркет</span></button>
+    <button data-tab="pass"><svg viewBox="0 0 24 24"><path d="m12 3 2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg><span>Сезон</span></button>
+  </nav>
+
+  <div class="sheet" id="sheet" aria-hidden="true">
+    <div class="sheet__scrim" data-close></div>
+    <div class="sheet__panel glass" role="dialog" aria-modal="true">
+      <div class="sheet__grab"></div>
+      <div id="sheetBody"></div>
+    </div>
+  </div>
+
+  <div class="reveal" id="reveal" aria-hidden="true">
+    <div class="reveal__rays"></div>
+    <canvas id="confetti"></canvas>
+    <div class="reveal__inner" id="revealBody"></div>
+  </div>
+
+  <div class="toast glass" id="toast" role="status"></div>
+
+  <script src="catalog.js"></script>
+  <script src="art.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
