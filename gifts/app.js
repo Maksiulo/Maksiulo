@@ -16,7 +16,9 @@
 
   /* ---------------- API ---------------- */
   const API = (window.GLINT_API || '').replace(/\/$/, '');
+  let DEMO = false;
   async function api(path, body) {
+    if (DEMO) return window.GlintDemo.api(path, body);
     const r = await fetch(API + path, {
       method: body ? 'POST' : 'GET',
       headers: { 'content-type': 'application/json', 'x-init-data': (tg && tg.initData) || '' },
@@ -251,6 +253,7 @@
   });
 
   function share(url, text) {
+    if (DEMO) return toast('В Telegram ссылка сразу уйдёт другу 💌');
     const u = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
     try { if (tg && tg.openTelegramLink) return tg.openTelegramLink(u); } catch (e) {}
     try { navigator.clipboard.writeText(url); toast('Ссылка скопирована'); } catch (e) { window.open(u, '_blank'); }
@@ -326,6 +329,7 @@
       ${C.PACKS.map(p => `<button class="pack" data-pack="${p.id}"><span class="star" style="font-size:26px">★</span><span class="pack__s">${fmt(p.stars + p.bonus)}${p.tag ? `<span class="pack__tag">${p.tag}</span>` : ''}<small>${p.bonus ? `${fmt(p.stars)} + ${fmt(p.bonus)} бонус` : 'звёзд'}</small></span><span class="pack__p">⭐ ${fmt(p.stars)}</span></button>`).join('')}
       <p class="sub" style="text-align:center;font-size:12px;margin-top:10px">Звёзды Glint нельзя вывести — это игровая валюта. Условия: /terms в боте</p>`);
     $('#sheetBody').querySelectorAll('[data-pack]').forEach(b => b.onclick = () => act(async () => {
+      if (DEMO) { const r = await api('/api/invoice', { pack: b.dataset.pack }); closeSheet(); await refresh(); bump(); notify('success'); toast(`Демо: +${fmt(r.demoCredited)} ★ без оплаты`); return render(tab, true); }
       if (!S.payments || !tg || !tg.openInvoice) throw new Error('Оплата доступна внутри Telegram');
       const { link } = await api('/api/invoice', { pack: b.dataset.pack });
       closeSheet();
@@ -373,11 +377,15 @@
   function gate(html) { $('#view').innerHTML = `<section class="hero glass" style="text-align:center;margin-top:30px"><div class="hero__stage"><div class="hero__ring"></div>${giftSVG({ model: 0, tier: 3, skin: 0, bd: 6, sym: 1 })}</div>${html}</section>`; }
   async function boot() {
     if (tg) { try { tg.ready(); tg.expand(); tg.setHeaderColor('#06060b'); tg.setBackgroundColor('#06060b'); tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) {} }
-    if (!tg || !tg.initData) return gate('<h1 class="h1">Glint</h1><p class="sub" style="margin:8px 0 18px">Коллекционные подарки живут в Telegram. Открой приложение через бота.</p>');
+    if (!tg || !tg.initData) {
+      DEMO = true;
+      window.GlintDemo.onEvent = async msg => { notify('success'); toast(msg); await refresh(); render(tab, true); };
+      document.body.classList.add('is-demo');
+    }
     try { await refresh(); }
     catch (e) { return gate(`<h1 class="h1">Не удалось загрузить</h1><p class="sub" style="margin:8px 0 18px">${esc(e.message)}</p><button class="btn btn--primary btn--block" onclick="location.reload()">Повторить</button>`); }
     await render('home');
-    const sp = (tg.initDataUnsafe && tg.initDataUnsafe.start_param) || '';
+    const sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || '';
     const claim = new URLSearchParams(location.search).get('claim') || (sp.startsWith('g_') ? sp.slice(2) : '');
     if (claim) {
       try { history.replaceState(null, '', location.pathname); } catch (e) {}
