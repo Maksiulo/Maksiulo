@@ -267,3 +267,5 @@ svg{display:block}
 .tile[data-go]{cursor:pointer}
 .field input::-webkit-outer-spin-button,.field input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .field input{-moz-appearance:textfield;appearance:textfield}
+.demo-bar{display:none;margin:-4px 0 14px;padding:8px 12px;border-radius:12px;text-align:center;font-size:11px;font-weight:800;letter-spacing:.06em;color:#ffd98a;background:rgba(255,178,63,.12);border:1px solid rgba(255,178,63,.3)}
+.is-demo .demo-bar{display:block}
