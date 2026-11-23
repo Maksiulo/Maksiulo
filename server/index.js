@@ -6,6 +6,7 @@ const C = require('../gifts/catalog.js');
 const db = require('./db');
 const tg = require('./telegram');
 const game = require('./game');
+const arcade = require('./arcade');
 
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
@@ -41,13 +42,14 @@ function serveStatic(req, res, pathname) {
   });
 }
 
-/* Простой лимит частоты: 40 запросов за 10 секунд на пользователя */
+/* Простой лимит частоты: RATE_LIMIT запросов за 10 секунд на пользователя (по умолчанию 60) */
+const RATE = Number(process.env.RATE_LIMIT || 60);
 const hits = new Map();
 function limited(uid) {
   const now = Date.now(), h = hits.get(uid) || { t: now, n: 0 };
   if (now - h.t > 10000) { h.t = now; h.n = 0; }
   h.n++; hits.set(uid, h);
-  return h.n > 40;
+  return h.n > RATE;
 }
 setInterval(() => { const now = Date.now(); for (const [k, v] of hits) if (now - v.t > 60000) hits.delete(k); }, 60000).unref();
 
@@ -83,6 +85,13 @@ const routes = {
   },
   'POST /api/pass/buy': ({ uid }) => game.buyPass(uid),
   'POST /api/pass/claim': ({ uid, body }) => game.claimPass(uid, body.lvl),
+  'GET /api/arcade': ({ uid }) => arcade.info(uid),
+  'POST /api/arcade/bonus': ({ uid }) => arcade.bonus(uid),
+  'POST /api/arcade/wheel': ({ uid }) => arcade.wheel(uid),
+  'POST /api/arcade/plinko': ({ uid, body }) => arcade.plinko(uid, body.bet, String(body.risk)),
+  'POST /api/arcade/chicken/start': ({ uid, body }) => arcade.chickenStart(uid, body.bet, String(body.risk)),
+  'POST /api/arcade/chicken/step': ({ uid }) => arcade.chickenStep(uid),
+  'POST /api/arcade/chicken/cash': ({ uid }) => arcade.chickenCash(uid),
   'POST /api/invoice': async ({ body }) => {
     const pack = C.PACKS.find(p => p.id === body.pack);
     if (!pack) throw new game.GameError('Нет такого пакета');
@@ -117,6 +126,7 @@ async function handleApi(req, res, url) {
 /* ---------------- бот ---------------- */
 const TERMS = `<b>Условия Glint</b>
 • Звёзды Glint (★) — внутриигровая валюта. Её нельзя вывести или обменять на деньги.
+• Монеты аркады (🪙) бесплатные: их нельзя купить, вывести или обменять на звёзды и подарки.
 • Подарки — цифровые коллекционные предметы для игры, обмена и подарков. Это не инвестиция: их цена не гарантирована.
 • Случайные только внешние признаки подарков. Редкость в дропе и Кузне всегда указана заранее.
 • Возврат по покупкам — через /paysupport в течение 14 дней, если звёзды ещё не потрачены.`;
