@@ -218,6 +218,8 @@ async function main() {
     send(res, 405, { error: 'method' });
   }).listen(PORT, () => console.log(`Glint слушает порт ${PORT}`));
   setupBot();
+  // Бесплатный Render усыпляет сервис без входящих запросов — будим себя каждые 10 минут
+  if (PUBLIC_URL && process.env.KEEPALIVE !== '0') setInterval(() => fetch(PUBLIC_URL + '/health').catch(() => {}), 10 * 60 * 1000).unref();
 }
 if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
 module.exports = { onUpdate };
