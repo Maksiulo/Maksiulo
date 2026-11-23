@@ -332,3 +332,79 @@ svg{display:block}
 .wheel{width:100%;display:block;transition:transform 4.1s cubic-bezier(.12,.75,.1,1);filter:drop-shadow(0 20px 40px rgba(0,0,0,.5))}
 .wheel text{fill:#fff;font:800 15px Unbounded,Manrope,sans-serif;text-anchor:middle;dominant-baseline:middle}
 .wheel-pin{position:absolute;z-index:2;left:50%;top:-8px;transform:translateX(-50%);width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:24px solid #fff;filter:drop-shadow(0 4px 8px rgba(0,0,0,.6))}
+
+/* ================= FX & polish ================= */
+.fx-layer{position:fixed;inset:0;width:100%;height:100%;z-index:80;pointer-events:none}
+.fx-coin{position:fixed;left:0;top:0;z-index:81;font-size:22px;pointer-events:none;will-change:transform;filter:drop-shadow(0 0 8px rgba(255,204,77,.8))}
+.fx-hit{animation:fxHit .35s var(--spring)}
+@keyframes fxHit{40%{transform:scale(1.18)}}
+.snd{margin-left:auto;width:40px;height:40px;border-radius:14px;font-size:17px;flex:none}
+
+/* вкладки: скользящая подсветка */
+.tabs{isolation:isolate}
+.tabs__pill{position:absolute;z-index:-1;left:0;top:6px;bottom:6px;border-radius:20px;background:rgba(255,255,255,.11);box-shadow:inset 0 1px 0 rgba(255,255,255,.18);transition:transform .5s var(--spring),width .4s var(--ease),background .4s}
+.tabs__pill.forge{background:linear-gradient(160deg,rgba(139,108,255,.6),rgba(63,182,255,.35))}
+.tabs button.on,.tabs button.on.tabs__forge{background:none;box-shadow:none}
+.tabs button svg{transition:transform .4s var(--spring)}
+.tabs button.on svg{transform:translateY(-2px) scale(1.12)}
+
+/* карточки: живая голография и искры у редких */
+@keyframes holoDrift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.card[data-r="epic"] .card__holo,.card[data-r="legend"] .card__holo,.card[data-r="myth"] .card__holo{animation:holoDrift 6s ease-in-out infinite}
+.card[data-r="legend"] .card__art::after,.card[data-r="myth"] .card__art::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(circle at 20% 25%,#fff 0 1.2px,transparent 2px),radial-gradient(circle at 78% 18%,#fff 0 1px,transparent 2px),radial-gradient(circle at 70% 75%,#fff 0 1.4px,transparent 2.4px),radial-gradient(circle at 30% 80%,#fff 0 1px,transparent 2px),radial-gradient(circle at 50% 50%,#fff 0 .8px,transparent 1.8px);
+  animation:twinkle 2.4s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.15;transform:scale(1)}50%{opacity:1;transform:scale(1.03)}}
+.card[data-r="myth"]{animation:mythGlow 3s ease-in-out infinite}
+@keyframes mythGlow{50%{box-shadow:0 0 0 1px rgba(255,77,141,.8),0 18px 50px -10px rgba(255,77,141,1)}}
+.card__art .gift{animation:giftIdle 5s ease-in-out infinite}
+.grid .card:nth-child(2n) .card__art .gift{animation-delay:-2.5s}
+@keyframes giftIdle{50%{transform:translateY(-4px) rotate(1.5deg)}}
+
+/* открытие подарка: заряд → вспышка → переворот */
+.reveal{--rc:#8b6cff}
+.reveal__rays{background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--rc) 35%,transparent) 0deg 6deg,transparent 6deg 18deg)}
+.reveal.charging .reveal__rays{animation:spin 3s linear infinite}
+.reveal__stage{position:relative;width:250px;height:330px;margin:0 auto;display:grid;place-items:center}
+.reveal__orb{position:absolute;width:150px;height:150px;border-radius:50%;display:grid;place-items:center;font:800 54px Unbounded,sans-serif;color:#fff;
+  background:radial-gradient(circle at 35% 30%,#fff,var(--rc) 40%,color-mix(in srgb,var(--rc) 40%,#000) 100%);box-shadow:0 0 60px var(--rc),0 0 120px color-mix(in srgb,var(--rc) 60%,transparent);opacity:0;transform:scale(.3)}
+.reveal.charging .reveal__orb{opacity:1;animation:orbCharge 1.4s cubic-bezier(.5,0,.9,.5) forwards}
+@keyframes orbCharge{0%{transform:scale(.3) rotate(0)}20%{transform:scale(1)}40%{transform:scale(.95) translate(3px,-2px)}55%{transform:scale(1.05) translate(-3px,2px)}70%{transform:scale(1) translate(4px,1px)}85%{transform:scale(1.15) translate(-4px,-1px)}100%{transform:scale(1.35)}}
+.reveal.done .reveal__orb{animation:orbPop .35s ease forwards;opacity:1}
+@keyframes orbPop{to{transform:scale(2.4);opacity:0}}
+.reveal__card{position:relative;width:250px;margin:0 auto;opacity:0;transform:rotateY(180deg) scale(.5);animation:none}
+.reveal.done .reveal__card{animation:flip .9s var(--spring) forwards}
+.reveal__info{opacity:0;transform:translateY(16px);transition:opacity .5s .5s,transform .5s .5s var(--ease)}
+.reveal.done .reveal__info{opacity:1;transform:none}
+.reveal::after{content:"";position:fixed;inset:0;background:var(--rc);opacity:0;pointer-events:none;mix-blend-mode:screen}
+.reveal.done.r-legend::after,.reveal.done.r-myth::after,.reveal.done.r-epic::after{animation:flash .6s ease-out}
+@keyframes flash{0%{opacity:.85}100%{opacity:0}}
+.reveal.done.r-myth .reveal__card .card{animation:mythGlow 1.5s ease-in-out infinite}
+
+/* оффер первой покупки */
+.offer{display:flex;align-items:center;gap:12px;width:100%;margin-top:12px;padding:14px;border-radius:22px;text-align:left;color:inherit;position:relative;overflow:hidden;
+  background:linear-gradient(120deg,rgba(255,178,63,.22),rgba(255,77,141,.22));border:1px solid rgba(255,178,63,.45)}
+.offer::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.25) 50%,transparent 70%);transform:translateX(-120%);animation:sheen 3s ease-in-out infinite}
+.offer__ic{font-size:30px;animation:float 2.5s ease-in-out infinite}
+.offer__t{flex:1;min-width:0}.offer__t b{display:block;font:800 15px Unbounded,Manrope,sans-serif}.offer__t small{color:var(--mute);font-size:12.5px}
+.offer__go{font:800 18px Unbounded,sans-serif;padding:8px 12px;border-radius:14px;background:linear-gradient(135deg,#ffcc4d,#ff7a3f);color:#1a0d00;box-shadow:0 8px 20px -6px rgba(255,150,60,.9)}
+.pack small s{opacity:.6}
+
+/* плинко: подсветка штырьков и шлейф */
+.pl-board .peg{transition:fill .3s,r .3s}
+.pl-board .peg.lit{fill:#ffcc4d;r:4.6px;transition:none}
+.pl-trail{fill:#ffcc4d;opacity:.35}
+.pl-pop{font:800 14px Unbounded,sans-serif;fill:#fff;text-anchor:middle;animation:plPop 1s ease-out forwards}
+@keyframes plPop{to{transform:translateY(-34px);opacity:0}}
+
+/* курочка: вспышка при аварии, монеты при выигрыше */
+.road.crash{box-shadow:inset 0 0 0 2px #ff4d8d,0 0 40px -6px #ff4d8d}
+.hen{transition:left .3s}
+.lane.here-new .hen{animation:henHop .38s var(--spring)}
+@keyframes henHop{0%{transform:translate(-160%,0) scale(.9)}50%{transform:translate(-80%,-26px) scale(1.1)}100%{transform:translate(-50%,0)}}
+
+/* кнопки: мягкое нажатие и блик */
+.chip,.tile[data-go],.game-card,.pack,.lot,.quest__r{transition:transform .2s var(--spring)}
+.chip:active,.tile[data-go]:active,.game-card:active,.pack:active,.quest__r:active{transform:scale(.95)}
+.game-card .gc-art{transition:transform .5s var(--spring)}
+.game-card:hover .gc-art{transform:rotate(-6deg) scale(1.06)}

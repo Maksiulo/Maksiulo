@@ -129,6 +129,7 @@ const TERMS = `<b>Условия Glint</b>
 • Монеты аркады (🪙) бесплатные: их нельзя купить, вывести или обменять на звёзды и подарки.
 • Подарки — цифровые коллекционные предметы для игры, обмена и подарков. Это не инвестиция: их цена не гарантирована.
 • Случайные только внешние признаки подарков. Редкость в дропе и Кузне всегда указана заранее.
+• Первая покупка звёзд удваивается: бонус равен оплаченной сумме.
 • Возврат по покупкам — через /paysupport в течение 14 дней, если звёзды ещё не потрачены.`;
 
 async function onUpdate(u) {
@@ -144,7 +145,7 @@ async function onUpdate(u) {
     await game.upsertUser(m.from, '');
     const r = await game.creditPayment(m.from.id, p.telegram_payment_charge_id, p.total_amount, p.invoice_payload);
     if (r.duplicate) return;
-    notify(m.chat.id, `✅ Начислено ★ ${r.credited}. Спасибо!`, appButton('Открыть Glint'));
+    notify(m.chat.id, `✅ Начислено ★ ${r.credited}${r.first ? ' — первая покупка ×2 🎉' : ''}. Спасибо!`, appButton('Открыть Glint'));
     if (r.referrer && r.refBonus) notify(r.referrer, `🤝 Твой друг пополнил баланс — тебе +★ ${r.refBonus}`);
     return;
   }

@@ -93,7 +93,7 @@ async function state(uid) {
   const checkedToday = u.last_checkin === today();
   return {
     user: { id: String(u.id), name: u.first_name, balance: Number(u.balance), xp: u.xp, level: level(u.xp),
-      pass: u.pass_season === SEASON, passClaimed: u.pass_claimed, streak: u.streak, checkedToday },
+      pass: u.pass_season === SEASON, passClaimed: u.pass_claimed, streak: u.streak, checkedToday, firstPurchase: Number(u.stars_paid) === 0 },
     quests: C.QUESTS.map(x => ({ ...x, p: Math.min(q[x.k] || 0, x.n), claimed: (q.claimed || []).includes(x.k) })),
     items: items.map(g => ({ ...pub(g), price: g.price ? Number(g.price) : undefined })),
     drop: drop && { id: drop.id, title: drop.title, model: drop.model, tier: drop.tier, price: Number(drop.price), supply: drop.supply, minted: drop.minted, endsAt: drop.ends_at },
@@ -276,7 +276,9 @@ async function creditPayment(uid, chargeId, stars, payload) {
   const pack = C.PACKS.find(p => 'pack:' + p.id === payload);
   if (!pack || pack.stars !== stars) throw new Error(`Payment mismatch ${payload} ${stars}`);
   return tx(async c => {
-    const credited = pack.stars + pack.bonus;
+    // Первая покупка — звёзды ×2 (бонус равен оплаченной сумме)
+    const first = !(await c.query('SELECT 1 FROM payments WHERE user_id = $1 LIMIT 1', [uid])).rowCount;
+    const credited = pack.stars + pack.bonus + (first ? pack.stars : 0);
     const ins = await c.query('INSERT INTO payments(charge_id, user_id, stars, credited, payload) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',
       [chargeId, uid, stars, credited, payload]);
     if (!ins.rowCount) return { duplicate: true };
@@ -288,7 +290,7 @@ async function creditPayment(uid, chargeId, stars, payload) {
       refBonus = Math.floor(stars * C.REF_SHARE);
       if (refBonus > 0) await addBalance(c, ref.referrer, refBonus, 'ref:' + uid);
     }
-    return { credited, referrer: ref && ref.referrer, refBonus };
+    return { credited, first, referrer: ref && ref.referrer, refBonus };
   });
 }
 

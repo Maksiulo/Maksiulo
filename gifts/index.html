@@ -22,6 +22,7 @@
         <span class="me__ava">G</span>
         <span class="me__txt"><b id="meName">Glint</b><small>Сезон 1 · ур. <span id="meLvl">1</span></small></span>
       </button>
+      <button class="snd glass" id="snd" aria-label="Звук">🔊</button>
       <div class="wallet glass" id="wallet">
         <span class="star">★</span><b id="balance">—</b>
         <button class="wallet__add" id="topUp" aria-label="Пополнить">+</button>
@@ -33,6 +34,7 @@
   </div>
 
   <nav class="tabs glass" id="tabs" aria-label="Навигация">
+    <i class="tabs__pill" id="tabsPill"></i>
     <button data-tab="home" class="on"><svg viewBox="0 0 24 24"><path d="M4 11.5 12 5l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z"/></svg><span>Дроп</span></button>
     <button data-tab="vault"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg><span>Коллекция</span></button>
     <button data-tab="forge" class="tabs__forge"><svg viewBox="0 0 24 24"><path d="M12 3c1.5 3.5 5 5 5 9.5A5 5 0 0 1 7 12.5C7 10 8.5 8.6 9.5 7.5 9.7 9.4 10.6 10.5 12 11c-.4-2.6-.4-5.2 0-8z"/></svg><span>Кузня</span></button>
@@ -58,6 +60,7 @@
   <div class="toast glass" id="toast" role="status"></div>
 
   <script src="catalog.js"></script>
+  <script src="fx.js"></script>
   <script src="art.js"></script>
   <script src="demo.js"></script>
   <script src="games.js"></script>

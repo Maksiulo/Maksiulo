@@ -5,6 +5,8 @@
   const C = window.GLINT;
   const { TIERS, MODELS, SKINS, BACKDROPS, SYMBOLS } = C;
   const { giftSVG, art } = window.GlintArt;
+  const FX = window.GlintFX;
+  const RC = ['#9aa4bf', '#3fa9ff', '#b56cff', '#ffb23f', '#ff4d8d'];
   const $ = (s, r = document) => r.querySelector(s);
   const fmt = n => Math.round(n).toLocaleString('ru-RU');
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -41,12 +43,14 @@
   const ui = { vf: 'all', mf: 'new', fsel: [] };
   async function refresh() { S = await api('/api/me'); paintTop(); }
   function paintTop() {
-    $('#balance').textContent = fmt(S.user.balance);
+    FX.count($('#balance'), S.user.balance);
     $('#meLvl').textContent = S.user.level;
     $('#meName').textContent = S.user.name || 'Игрок';
     $('.me__ava').textContent = (S.user.name || 'G')[0].toUpperCase();
   }
   function bump() { const w = $('#wallet'); w.classList.remove('bump'); void w.offsetWidth; w.classList.add('bump'); }
+  /* Звёзды летят из кнопки в кошелёк */
+  const rewardFly = (from, stars) => { if (from) FX.fly(from, '#wallet', { emoji: '⭐', n: Math.max(4, Math.min(12, Math.round(stars / 15))) }); };
 
   let toastT;
   function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
@@ -97,7 +101,9 @@
       </section>`;
       const days = ['1', '2', '3', '4', '5', '6', '7'];
       const doneN = u.checkedToday ? u.streak : (u.streak % 7);
-      return `${hero}
+      const offer = u.firstPurchase ? `<button class="offer" data-topup>
+          <span class="offer__ic">🎁</span><span class="offer__t"><b>Первая покупка ×2</b><small>Получишь вдвое больше звёзд — только один раз</small></span><span class="offer__go">×2</span></button>` : '';
+      return `${hero}${offer}
       <section class="section bento">
         <div class="tile tile--wide glass">
           <h3>Серия входов · ${u.streak} дн.</h3>
@@ -200,6 +206,7 @@
   async function render(t = tab, keepScroll) {
     tab = t;
     document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+    movePill();
     if (t === 'arcade' && !keepScroll) await G.enter();
     if (t === 'market' && !keepScroll) { try { MARKET = await api('/api/market?sort=' + ui.mf); } catch (e) { toast(e.message); } }
     const view = $('#view');
@@ -213,17 +220,25 @@
       tick(); cdTimer = setInterval(tick, 1000);
     }
   }
-  $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b && S) { haptic(); render(b.dataset.tab); } });
+  $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b && S) { haptic(); FX.sfx.tap(); render(b.dataset.tab); } });
+  function movePill() {
+    const b = document.querySelector('#tabs button.on'), pill = $('#tabsPill');
+    if (b && pill) { pill.style.width = b.offsetWidth + 'px'; pill.style.transform = `translateX(${b.offsetLeft}px)`; pill.classList.toggle('forge', b.dataset.tab === 'forge'); }
+  }
+  addEventListener('resize', movePill);
+  $('#snd').onclick = () => { const m = FX.toggleMute(); $('#snd').textContent = m ? '🔇' : '🔊'; };
+  $('#snd').textContent = FX.muted ? '🔇' : '🔊';
 
   /* ---------------- действия ---------------- */
   $('#view').addEventListener('click', e => {
     const el = e.target;
     if (tab === 'arcade') return G.onClick(el);
     const go = el.closest('[data-go]'); if (go) return render(go.dataset.go);
+    if (el.closest('[data-topup]')) return openTopUp();
     if (el.closest('#mintBtn')) return act(async () => { const r = await api('/api/drop/mint', {}); await refresh(); bump(); reveal(r.gift, 'Твой новый подарок'); render('home', true); });
     if (el.closest('#checkin')) return act(async () => {
       const r = await api('/api/checkin', {}); await refresh();
-      if (r.gift) reveal(r.gift, `День ${r.day} — Эпик-подарок!`); else { bump(); notify('success'); toast(`День ${r.day}: +${r.stars} ★`); }
+      if (r.gift) reveal(r.gift, `День ${r.day} — Эпик-подарок!`); else { rewardFly(el.closest('#checkin'), r.stars); notify('success'); toast(`День ${r.day}: +${r.stars} ★`); }
       render('home', true);
     });
     const q = el.closest('[data-q]');
@@ -231,7 +246,7 @@
       const qd = S.quests.find(x => x.k === q.dataset.q);
       if (qd.claimed) return;
       if (qd.p < qd.n) { toast('Сначала выполни задание'); return setTimeout(() => render({ forge: 'forge', send: 'vault', buy: 'market', mint: 'home' }[qd.k]), 500); }
-      return act(async () => { const r = await api('/api/quest', { k: qd.k }); await refresh(); bump(); notify('success'); toast(`+${r.stars} ★ и +60 XP`); render('home', true); });
+      return act(async () => { const r = await api('/api/quest', { k: qd.k }); rewardFly(q, r.stars); await refresh(); notify('success'); toast(`+${r.stars} ★ и +60 XP`); render('home', true); });
     }
     const vf = el.closest('[data-vf]'); if (vf) { ui.vf = vf.dataset.vf; haptic(); return render('vault', true); }
     const mf = el.closest('[data-mf]'); if (mf) { ui.mf = mf.dataset.mf; haptic(); return render('market'); }
@@ -245,7 +260,7 @@
     const un = el.closest('[data-unlist]'); if (un) return act(async () => { await api('/api/market/unlist', { id: un.dataset.unlist }); await refresh(); toast('Лот снят'); render('market'); });
     if (el.closest('#forgeBtn')) return doForge();
     if (el.closest('#passBtn')) return confirmSheet('Открыть Glint Pass?', `Спишется ★ ${C.PASS_PRICE}. Премиум-награды до конца сезона.`, 'Открыть', () => act(async () => { await api('/api/pass/buy', {}); await refresh(); notify('success'); toast('Glint Pass активирован ✨'); render('pass', true); }));
-    const lv = el.closest('[data-lvl]'); if (lv) return act(async () => { const r = await api('/api/pass/claim', { lvl: +lv.dataset.lvl }); await refresh(); if (r.gift) reveal(r.gift, `Награда уровня ${lv.dataset.lvl}`); else { bump(); notify('success'); toast(`+${r.stars} ★`); } render('pass', true); });
+    const lv = el.closest('[data-lvl]'); if (lv) return act(async () => { const r = await api('/api/pass/claim', { lvl: +lv.dataset.lvl }); await refresh(); if (r.gift) reveal(r.gift, `Награда уровня ${lv.dataset.lvl}`); else { rewardFly(lv, r.stars); notify('success'); toast(`+${r.stars} ★`); } render('pass', true); });
     if (el.closest('#refBtn')) {
       const link = S.bot ? `https://t.me/${S.bot}?start=ref_${S.user.id}` : location.origin;
       return share(link, 'Забери бесплатный коллекционный подарок в Glint 🎁');
@@ -331,7 +346,8 @@
   function openTopUp() {
     openSheet(`<h2 style="text-align:center;font-size:20px">Пополнить звёзды</h2>
       <p class="sub" style="text-align:center;margin:6px 0 16px">Оплата Telegram Stars — без карт, в два касания</p>
-      ${C.PACKS.map(p => `<button class="pack" data-pack="${p.id}"><span class="star" style="font-size:26px">★</span><span class="pack__s">${fmt(p.stars + p.bonus)}${p.tag ? `<span class="pack__tag">${p.tag}</span>` : ''}<small>${p.bonus ? `${fmt(p.stars)} + ${fmt(p.bonus)} бонус` : 'звёзд'}</small></span><span class="pack__p">⭐ ${fmt(p.stars)}</span></button>`).join('')}
+      ${S.user.firstPurchase ? '<div class="offer" style="margin:0 0 12px;cursor:default"><span class="offer__ic">🎁</span><span class="offer__t"><b>Первая покупка ×2</b><small>Бонус равен оплаченной сумме</small></span><span class="offer__go">×2</span></div>' : ''}
+      ${C.PACKS.map(p => { const x2 = S.user.firstPurchase ? p.stars : 0; return `<button class="pack" data-pack="${p.id}"><span class="star" style="font-size:26px">★</span><span class="pack__s">${fmt(p.stars + p.bonus + x2)}${x2 ? '<span class="pack__tag">×2</span>' : p.tag ? `<span class="pack__tag">${p.tag}</span>` : ''}<small>${x2 ? `<s>${fmt(p.stars + p.bonus)}</s> · первая покупка` : p.bonus ? `${fmt(p.stars)} + ${fmt(p.bonus)} бонус` : 'звёзд'}</small></span><span class="pack__p">⭐ ${fmt(p.stars)}</span></button>`; }).join('')}
       <p class="sub" style="text-align:center;font-size:12px;margin-top:10px">Звёзды Glint нельзя вывести — это игровая валюта. Условия: /terms в боте</p>`);
     $('#sheetBody').querySelectorAll('[data-pack]').forEach(b => b.onclick = () => act(async () => {
       if (DEMO) { const r = await api('/api/invoice', { pack: b.dataset.pack }); closeSheet(); await refresh(); bump(); notify('success'); toast(`Демо: +${fmt(r.demoCredited)} ★ без оплаты`); return render(tab, true); }
@@ -353,29 +369,25 @@
   /* ---------------- открытие подарка ---------------- */
   const rv = $('#reveal');
   function reveal(g, title) {
-    const t = TIERS[g.tier];
+    const t = TIERS[g.tier], col = RC[g.tier], epic = g.tier >= 3;
+    rv.className = 'reveal open charging r-' + t.key; rv.style.setProperty('--rc', col); rv.setAttribute('aria-hidden', 'false');
     $('#revealBody').innerHTML = `<p class="eyebrow">${esc(title)}</p>
-      <div class="reveal__card">${card(g)}</div>
-      <h2>${MODELS[g.model].name} #${g.num}</h2>
+      <div class="reveal__stage"><div class="reveal__orb"><span>?</span></div><div class="reveal__card">${card(g)}</div></div>
+      <div class="reveal__info"><h2>${MODELS[g.model].name} #${g.num}</h2>
       <span class="rar" style="color:${t.c}">${t.name} · ${SKINS[g.skin].n} · ${BACKDROPS[g.bd].n}</span>
-      <button class="btn btn--primary btn--block" id="rvOk">В коллекцию</button>`;
-    rv.classList.add('open'); rv.setAttribute('aria-hidden', 'false'); notify('success');
-    tilt(rv); confetti(g.tier);
-    $('#rvOk').onclick = () => { rv.classList.remove('open'); rv.setAttribute('aria-hidden', 'true'); };
-  }
-  function confetti(tier) {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const cv = $('#confetti'), ctx = cv.getContext('2d'), dpr = devicePixelRatio || 1;
-    cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const cols = ['#8b6cff', '#26e3c8', '#ffcc4d', '#ff4d8d', '#3fa9ff', '#fff'], R = (a, b) => a + Math.random() * (b - a);
-    const P = Array.from({ length: 60 + tier * 40 }, () => ({ x: innerWidth / 2, y: innerHeight * .42, vx: R(-9, 9), vy: R(-15, -4), r: R(3, 7), c: cols[Math.random() * cols.length | 0], a: R(0, 6), s: R(-.3, .3), life: 1 }));
-    let f = 0;
-    (function loop() {
-      ctx.clearRect(0, 0, innerWidth, innerHeight);
-      P.forEach(p => { p.vy += .35; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.a += p.s; p.life -= .006;
-        ctx.save(); ctx.globalAlpha = Math.max(0, p.life); ctx.translate(p.x, p.y); ctx.rotate(p.a); ctx.fillStyle = p.c; ctx.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); ctx.restore(); });
-      if (++f < 200 && rv.classList.contains('open')) requestAnimationFrame(loop); else ctx.clearRect(0, 0, innerWidth, innerHeight);
-    })();
+      <button class="btn btn--primary btn--block" id="rvOk">В коллекцию</button></div>`;
+    FX.sfx.charge(); haptic('medium');
+    let n = 0; const hb = setInterval(() => haptic(n++ % 2 ? 'light' : 'medium'), 110);
+    setTimeout(() => {
+      clearInterval(hb);
+      rv.classList.remove('charging'); rv.classList.add('done');
+      const [x, y] = FX.center($('.reveal__stage'));
+      FX.burst(x, y, { colors: [col, '#ffffff', col], n: 40 + g.tier * 25, speed: 7 + g.tier * 1.5 });
+      if (g.tier >= 2) FX.burst(x, y - 40, { colors: ['#8b6cff', '#26e3c8', '#ffcc4d', '#ff4d8d', '#3fa9ff', '#fff'], n: 50 + g.tier * 30, speed: 12, kind: 'confetti', g: 0.32, life: 1.6 });
+      epic ? FX.sfx.big() : FX.sfx.win();
+      notify('success'); haptic('heavy'); tilt(rv);
+    }, epic ? 1400 : 850);
+    $('#rvOk').onclick = () => { rv.className = 'reveal'; rv.setAttribute('aria-hidden', 'true'); FX.sfx.tap(); };
   }
 
   /* ---------------- старт ---------------- */
