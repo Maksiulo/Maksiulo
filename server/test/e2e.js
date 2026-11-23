@@ -79,15 +79,16 @@ const me = u => api(u, '/api/me').then(r => r.j);
     });
     await t('оплата Stars зачисляется один раз + 10% рефереру', async () => {
       await hook(pay(B, 750, 'pack:p750', 'ch1')); await hook(pay(B, 750, 'pack:p750', 'ch1'));
-      assert.equal((await me(B)).user.balance, 750);
+      assert.equal((await me(B)).user.balance, 1500); // первая покупка ×2
       assert.equal((await me(A)).user.balance, 75);
+      assert.equal((await me(B)).user.firstPurchase, false);
     });
     await t('инвойс создаётся в XTR', async () => {
       const r = await api(B, '/api/invoice', { pack: 'p2000' }); assert.equal(r.status, 200); assert.ok(r.j.link.includes('pack:p2000'));
     });
     await t('дроп: списание и выпуск', async () => {
       const r = await api(B, '/api/drop/mint', {}); assert.equal(r.status, 200); assert.equal(r.j.gift.tier, 1);
-      const s = await me(B); assert.equal(s.user.balance, 500); assert.equal(s.drop.minted, 1);
+      const s = await me(B); assert.equal(s.user.balance, 1250); assert.equal(s.drop.minted, 1);
     });
     await t('вход дня: один раз в сутки', async () => {
       const r = await api(B, '/api/checkin', {}); assert.equal(r.j.day, 1); assert.equal(r.j.stars, 25);
@@ -101,7 +102,7 @@ const me = u => api(u, '/api/me').then(r => r.j);
       assert.equal((await api(B, '/api/forge', { ids: commons })).status, 403);
       const q = await api(B, '/api/quest', { k: 'forge' }); assert.equal(q.j.stars, 60);
       assert.equal((await api(B, '/api/quest', { k: 'forge' })).status, 400);
-      assert.equal((await me(B)).user.balance, 500 + 25 - 40 + 60);
+      assert.equal((await me(B)).user.balance, 1250 + 25 - 40 + 60);
     });
     await t('маркет: выставить, нельзя купить своё, покупка с комиссией', async () => {
       const gid = (await me(A)).items[0].id;
@@ -120,9 +121,9 @@ const me = u => api(u, '/api/me').then(r => r.j);
       const rs = await Promise.all(Array.from({ length: 6 }, () => api(A, '/api/drop/mint', {})));
       assert.ok(rs.every(r => r.status === 402));
       await hook(pay(A, 750, 'pack:p750', 'ch2'));
-      const rs2 = await Promise.all(Array.from({ length: 6 }, () => api(A, '/api/drop/mint', {})));
-      assert.equal(rs2.filter(r => r.status === 200).length, 3);
-      assert.equal((await me(A)).user.balance, 170 + 750 - 750);
+      const rs2 = await Promise.all(Array.from({ length: 9 }, () => api(A, '/api/drop/mint', {})));
+      assert.equal(rs2.filter(r => r.status === 200).length, 6); // 170 + 750×2 = 1670 → 6 по 250
+      assert.equal((await me(A)).user.balance, 170 + 1500 - 1500);
     });
     await t('подарок по ссылке: забрать один раз, уведомить отправителя', async () => {
       const gid = (await me(B)).items.find(g => g.status === 'owned').id;

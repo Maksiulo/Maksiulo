@@ -1,12 +1,12 @@
 /* Аркада Glint: Плинко, Курочка, Колесо дня, лидеры. Монеты бесплатные, результаты считает сервер. */
 window.GlintGames = function (ctx) {
   const { api, toast, notify, haptic, fmt, esc, $ } = ctx;
-  const A = window.GLINT.ARCADE;
+  const A = window.GLINT.ARCADE, FX = window.GlintFX;
   let ARC = null, game = null, busy = false;
   const st = { bet: 50, plRisk: 'low', chRisk: 'easy', run: null, crashed: false };
   const COIN = '<span class="coin">🪙</span>';
   const sleep = ms => new Promise(r => setTimeout(r, ms));
-  const setCoins = n => { ARC.coins = n; const el = $('#arcCoins'); if (el) el.textContent = fmt(n); };
+  const setCoins = n => { ARC.coins = n; FX.count($('#arcCoins'), n); };
 
   async function load() { ARC = await api('/api/arcade'); if (ARC.chicken) { st.run = ARC.chicken; st.crashed = false; } }
 
@@ -58,7 +58,7 @@ window.GlintGames = function (ctx) {
   function plinkoBoard() {
     const rows = A.PLINKO_ROWS, t = A.PLINKO[st.plRisk], cx = PG.w / 2;
     let pegs = '';
-    for (let r = 0; r < rows; r++) for (let i = 0; i <= r + 1; i++) pegs += `<circle cx="${cx + (i - (r + 1) / 2) * PG.gap}" cy="${PG.top + r * PG.row}" r="3.2" class="peg"/>`;
+    for (let r = 0; r < rows; r++) for (let i = 0; i <= r + 1; i++) pegs += `<circle cx="${cx + (i - (r + 1) / 2) * PG.gap}" cy="${PG.top + r * PG.row}" r="3.2" class="peg" data-p="${r}-${i}"/>`;
     const y = PG.top + rows * PG.row;
     const slots = t.map((m, k) => {
       const hot = m >= 5 ? 'h3' : m >= 1.5 ? 'h2' : m >= 1 ? 'h1' : 'h0';
@@ -78,21 +78,32 @@ window.GlintGames = function (ctx) {
     if (bet > ARC.coins) { notify('error'); return toast('Не хватает монет'); }
     let r;
     try { r = await api('/api/arcade/plinko', { bet, risk: st.plRisk }); } catch (e) { notify('error'); return toast(e.message); }
-    setCoins(ARC.coins - bet); haptic('light');
+    setCoins(ARC.coins - bet); haptic('light'); FX.sfx.pop();
     const svg = $('#plBoard'); if (!svg) return;
     const ns = 'http://www.w3.org/2000/svg', ball = document.createElementNS(ns, 'circle');
     ball.setAttribute('r', '7'); ball.setAttribute('class', 'pl-ball'); svg.appendChild(ball);
     const cx = PG.w / 2, pts = [[cx, PG.top - 18]];
-    let rights = 0;
-    r.path.forEach((d, row) => { rights += d; pts.push([cx + (rights - (row + 1) / 2) * PG.gap, PG.top + row * PG.row + PG.row / 2]); });
+    let rights = 0; const hits = [null];
+    r.path.forEach((d, row) => { hits.push(`${row}-${rights + d}`); rights += d; pts.push([cx + (rights - (row + 1) / 2) * PG.gap, PG.top + row * PG.row + PG.row / 2]); });
     pts.push([cx + (r.slot - 5) * PG.gap, PG.top + A.PLINKO_ROWS * PG.row + 6]);
     for (let i = 1; i < pts.length; i++) {
       const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], t0 = performance.now(), dur = 110;
       await new Promise(res => { (function f(now) { const k = Math.min(1, (now - t0) / dur), hop = Math.sin(k * Math.PI) * 6; ball.setAttribute('cx', x0 + (x1 - x0) * k); ball.setAttribute('cy', y0 + (y1 - y0) * k - hop); k < 1 ? requestAnimationFrame(f) : res(); })(t0); });
-      if (i < pts.length - 1) haptic('light');
+      if (i < pts.length - 1) {
+        haptic('light'); FX.sfx.tick();
+        const peg = hits[i] && svg.querySelector(`[data-p="${hits[i]}"]`);
+        if (peg) { peg.classList.add('lit'); setTimeout(() => peg.classList.remove('lit'), 260); }
+      }
     }
     const slot = svg.querySelector(`[data-slot="${r.slot}"]`); if (slot) { slot.classList.remove('flash'); void slot.getBBox(); slot.classList.add('flash'); }
     setTimeout(() => ball.remove(), 400);
+    const pop = document.createElementNS(ns, 'text'); pop.setAttribute('x', pts.at(-1)[0]); pop.setAttribute('y', pts.at(-1)[1] - 14); pop.setAttribute('class', 'pl-pop');
+    pop.textContent = '×' + r.mult; svg.appendChild(pop); setTimeout(() => pop.remove(), 1000);
+    const at = slot ? FX.center(slot) : null, col = r.mult >= 5 ? '#ff4d8d' : r.mult >= 1.5 ? '#b56cff' : r.mult >= 1 ? '#3fa9ff' : '#9aa4bf';
+    if (at) FX.burst(at[0], at[1], { colors: [col, '#fff'], n: r.mult >= 1 ? 18 + Math.min(60, r.mult * 4) : 8, speed: r.mult >= 5 ? 9 : 5 });
+    if (r.mult >= 5) { FX.sfx.big(); if (at) FX.burst(at[0], at[1] - 60, { colors: ['#ffcc4d', '#ff4d8d', '#8b6cff', '#26e3c8', '#fff'], n: 80, speed: 12, kind: 'confetti', g: .3, life: 1.5 }); }
+    else if (r.mult >= 1) FX.sfx.win(); else FX.sfx.tap();
+    if (r.win > 0 && at) await FX.fly(at, '#arcCoins', { n: Math.max(3, Math.min(12, Math.round(r.mult * 3))) });
     setCoins(r.coins);
     if (r.mult >= 2) { notify('success'); toast(`×${r.mult} · +${fmt(r.win)} 🪙`); } else if (r.mult >= 1) toast(`×${r.mult} · ${fmt(r.win)} 🪙`);
   }
@@ -138,10 +149,19 @@ window.GlintGames = function (ctx) {
     ARC.wheelReady = false;
     const seg = 360 / A.WHEEL.length, target = 360 * 6 + (360 - (r.index + .5) * seg);
     wheelAngle = wheelAngle - (wheelAngle % 360) + target;
-    const w = $('#wheel'); w.style.transform = `rotate(${wheelAngle}deg)`;
-    const tick = setInterval(() => haptic('light'), 120);
-    await sleep(4200); clearInterval(tick);
-    setCoins(r.coins); notify('success'); toast(`+${fmt(r.got)} 🪙`);
+    const w = $('#wheel'); w.style.transform = `rotate(${wheelAngle}deg)`; FX.sfx.whoosh();
+    // щелчки замедляются вместе с колесом
+    const t0 = performance.now(); let last = 0;
+    await new Promise(done => (function f(now) {
+      const k = (now - t0) / 4100; if (k >= 1) return done();
+      const gap = 40 + Math.pow(k, 2.2) * 420; if (now - last > gap) { last = now; FX.sfx.tick(); haptic('light'); }
+      requestAnimationFrame(f);
+    })(t0));
+    await sleep(150);
+    const [x, y] = FX.center(w); notify('success'); r.got >= 500 ? FX.sfx.big() : FX.sfx.win();
+    FX.burst(x, y, { colors: [A.WHEEL[r.index].c, '#fff', '#ffcc4d'], n: 60 + (r.got >= 500 ? 80 : 0), speed: 10, kind: r.got >= 200 ? 'confetti' : 'spark', g: .25, life: 1.4 });
+    await FX.fly([x, y], '#arcCoins', { n: Math.min(14, 4 + Math.round(r.got / 80)) });
+    setCoins(r.coins); toast(`+${fmt(r.got)} 🪙`);
     const b = document.querySelector('[data-arc="spin"]'); if (b) { b.disabled = true; b.textContent = 'Следующий спин — завтра'; }
   }
 
@@ -171,9 +191,10 @@ window.GlintGames = function (ctx) {
     try {
       if (k === 'back') { game = null; await load(); paint(); }
       else if (k === 'plinko' || k === 'chicken' || k === 'wheel') { game = k; if (k === 'chicken' && st.run && !st.crashed) {} else if (k === 'chicken') { st.run = null; st.crashed = false; } paint(); window.scrollTo({ top: 0 }); }
-      else if (k === 'bonus') { const r = await api('/api/arcade/bonus', {}); setCoins(r.coins); ARC.bonusReady = false; notify('success'); toast(`+${r.got} 🪙`); paint(); }
+      else if (k === 'bonus') { const r = await api('/api/arcade/bonus', {}); ARC.bonusReady = false; notify('success'); FX.sfx.win(); await FX.fly(a, '#arcCoins', { n: 12 }); setCoins(r.coins); toast(`+${r.got} 🪙`); paint(); }
       else if (k === 'spin') { await spin(); }
       else if (k === 'start') {
+        FX.sfx.pop();
         const bet = readBet(); if (!bet) return true;
         const r = await api('/api/arcade/chicken/start', { bet, risk: st.chRisk });
         st.run = { id: r.id, bet: r.bet, risk: r.risk, step: 0 }; st.crashed = false; setCoins(r.coins); haptic('medium'); paint();
@@ -181,11 +202,24 @@ window.GlintGames = function (ctx) {
       else if (k === 'go') {
         const r = await api('/api/arcade/chicken/step', {});
         st.run.step = r.step;
-        if (r.crashed) { st.crashed = true; notify('error'); haptic('heavy'); paint(); $('#road').classList.add('shake'); toast('Сбила машина 💥'); }
-        else if (r.finished) { setCoins(r.coins); st.crashed = false; const won = r.win; st.run = null; notify('success'); paint(); toast(`Дошла до финиша! +${fmt(won)} 🪙`); }
-        else { haptic('medium'); paint(); }
+        if (r.crashed) {
+          st.crashed = true; notify('error'); haptic('heavy'); FX.sfx.lose(); paint();
+          const road = $('#road'); road.classList.add('shake', 'crash'); const hen = road.querySelector('.lane .hen');
+          if (hen) { const [x, y] = FX.center(hen); FX.burst(x, y, { colors: ['#ff4d8d', '#ffb23f', '#fff'], n: 50, speed: 9 }); }
+          toast('Сбила машина 💥');
+        }
+        else if (r.finished) {
+          st.crashed = false; const won = r.win; st.run = null; notify('success'); FX.sfx.big(); paint();
+          const road = $('#road'), [x, y] = FX.center(road); FX.burst(x, y, { colors: ['#ffcc4d', '#26e3c8', '#ff4d8d', '#fff'], n: 120, speed: 13, kind: 'confetti', g: .3, life: 1.6 });
+          await FX.fly([x, y], '#arcCoins', { n: 14 }); setCoins(r.coins); toast(`Дошла до финиша! +${fmt(won)} 🪙`);
+        }
+        else { haptic('medium'); FX.sfx.hop(); paint(); const l = document.querySelector('.lane .hen'); if (l) l.parentElement.classList.add('here-new'); }
       }
-      else if (k === 'cash') { const r = await api('/api/arcade/chicken/cash', {}); st.run = null; st.crashed = false; setCoins(r.coins); notify('success'); toast(`+${fmt(r.win)} 🪙`); paint(); }
+      else if (k === 'cash') {
+        const r = await api('/api/arcade/chicken/cash', {}); const hen = document.querySelector('.lane .hen'), from = hen ? FX.center(hen) : a;
+        st.run = null; st.crashed = false; notify('success'); FX.sfx.win(); paint();
+        await FX.fly(from, '#arcCoins', { n: Math.max(4, Math.min(14, Math.round(r.win / 20))) }); setCoins(r.coins); toast(`+${fmt(r.win)} 🪙`);
+      }
     } catch (e) { notify('error'); toast(e.message); }
     finally { busy = false; }
     return true;
