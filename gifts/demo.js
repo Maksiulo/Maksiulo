@@ -26,6 +26,8 @@
   const spend = n => { if (S.balance < n) err('Не хватает звёзд', 402); S.balance -= n; };
   const own = (gid, status = 'owned') => { const g = S.items.find(x => x.id === gid); if (!g) err('Это не твой подарок', 403); if (g.status !== status) err('Подарок сейчас недоступен'); return g; };
   const bump = k => { q()[k] = (q()[k] || 0) + 1; };
+  const ar = () => (S.ar = S.ar || { coins: C.ARCADE.START, won: 0, bonus: null, wheel: null, run: null });
+  const arBet = v => { const b = Math.floor(Number(v)); if (!(b >= C.ARCADE.MIN_BET && b <= C.ARCADE.MAX_BET)) err(`Ставка от ${C.ARCADE.MIN_BET} до ${C.ARCADE.MAX_BET}`); if (b > S.ar.coins) err('Не хватает монет', 402); return b; };
 
   const routes = {
     'GET /api/me': () => ({
@@ -80,6 +82,27 @@
       const r = C.PASS_REWARDS.find(x => x.lvl === b.lvl); if (!r || level(S.xp) < r.lvl || (r.prem && !S.pass) || S.passClaimed.includes(r.lvl)) err('Награда недоступна');
       S.passClaimed.push(r.lvl); let gift = null; if (r.stars) S.balance += r.stars; if (r.gift) S.items.push(gift = mint(r.gift.model, r.gift.tier));
       return { stars: r.stars || 0, gift };
+    },
+    'GET /api/arcade': () => { ar(); return { coins: S.ar.coins, won: S.ar.won, rank: S.ar.won ? 4 : null, bonusReady: S.ar.bonus !== today(), wheelReady: S.ar.wheel !== today(),
+      top: [{ name: 'Kirill', won: 48200 }, { name: 'Алина', won: 31500 }, { name: 'nika', won: 12900 }, ...(S.ar.won ? [{ name: 'Ты', won: S.ar.won, me: true }] : [])], chicken: S.ar.run }; },
+    'POST /api/arcade/bonus': () => { ar(); if (S.ar.bonus === today()) err('Бонус уже получен'); S.ar.bonus = today(); S.ar.coins += C.ARCADE.DAILY; return { coins: S.ar.coins, got: C.ARCADE.DAILY }; },
+    'POST /api/arcade/wheel': () => { ar(); if (S.ar.wheel === today()) err('Колесо уже крутили сегодня'); S.ar.wheel = today(); const i = wroll(C.ARCADE.WHEEL); S.ar.coins += C.ARCADE.WHEEL[i].coins; return { index: i, got: C.ARCADE.WHEEL[i].coins, coins: S.ar.coins }; },
+    'POST /api/arcade/plinko': b => {
+      ar(); const bet = arBet(b.bet), t = C.ARCADE.PLINKO[b.risk] || err('Неверный риск');
+      const path = Array.from({ length: C.ARCADE.PLINKO_ROWS }, () => rint(2)), slot = path.reduce((s, x) => s + x, 0), win = Math.floor(bet * t[slot]);
+      S.ar.coins += win - bet; S.ar.won += Math.max(0, win - bet); return { path, slot, mult: t[slot], win, coins: S.ar.coins };
+    },
+    'POST /api/arcade/chicken/start': b => { ar(); if (S.ar.run) err('Сначала закончи текущий забег'); const bet = arBet(b.bet); if (!C.ARCADE.CHICKEN.risk[b.risk]) err('Неверная сложность'); S.ar.coins -= bet; S.ar.run = { id: id(), bet, risk: b.risk, step: 0 }; return { ...S.ar.run, coins: S.ar.coins }; },
+    'POST /api/arcade/chicken/step': () => {
+      ar(); const g = S.ar.run || err('Нет активного забега'), p = C.ARCADE.CHICKEN.risk[g.risk];
+      if (Math.random() >= p) { S.ar.run = null; return { crashed: true, step: g.step + 1, win: 0 }; }
+      g.step++;
+      if (g.step >= C.ARCADE.CHICKEN.lanes) { const win = Math.floor(g.bet * C.chickenMult(g.step, p)); S.ar.coins += win; S.ar.won += win - g.bet; S.ar.run = null; return { crashed: false, step: g.step, finished: true, win, coins: S.ar.coins }; }
+      return { crashed: false, step: g.step, mult: C.chickenMult(g.step, p) };
+    },
+    'POST /api/arcade/chicken/cash': () => {
+      ar(); const g = S.ar.run || err('Нет активного забега'); if (!g.step) err('Сделай хотя бы один шаг');
+      const win = Math.floor(g.bet * C.chickenMult(g.step, C.ARCADE.CHICKEN.risk[g.risk])); S.ar.coins += win; S.ar.won += Math.max(0, win - g.bet); S.ar.run = null; return { win, step: g.step, coins: S.ar.coins };
     },
     'POST /api/invoice': b => { const p = C.PACKS.find(x => x.id === b.pack); S.balance += p.stars + p.bonus; return { demoCredited: p.stars + p.bonus }; },
   };

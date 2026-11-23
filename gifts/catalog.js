@@ -58,6 +58,24 @@
         ? { lvl: i + 1, prem, stars: 40 + i * 20 }
         : { lvl: i + 1, prem, gift: { model: i % 8, tier: Math.min(4, Math.floor(i / 3) + (prem ? 1 : 0)) } };
     }),
+    // Аркада: игры на бесплатных монетах. Монеты нельзя купить, вывести или обменять на звёзды и подарки.
+    ARCADE: {
+      START: 500, DAILY: 300, MIN_BET: 10, MAX_BET: 5000, XP_PER_GAME: 2, XP_DAY_CAP: 60,
+      PLINKO_ROWS: 10,
+      // Ожидаемый возврат ~99% (биномиальное распределение на 10 рядах)
+      PLINKO: {
+        low: [8.9, 3, 1.4, 1.1, 1, 0.5, 1, 1.1, 1.4, 3, 8.9],
+        mid: [22, 5, 2, 1.4, 0.6, 0.4, 0.6, 1.4, 2, 5, 22],
+        high: [76, 10, 3, 0.9, 0.3, 0.2, 0.3, 0.9, 3, 10, 76],
+      },
+      CHICKEN: { lanes: 10, edge: 0.97, risk: { easy: 0.88, mid: 0.76, hard: 0.6 } },
+      // Колесо дня — бесплатно раз в сутки
+      WHEEL: [
+        { coins: 25, w: 22, c: '#3fa9ff' }, { coins: 50, w: 26, c: '#8b6cff' }, { coins: 100, w: 22, c: '#26e3c8' },
+        { coins: 200, w: 14, c: '#ffb23f' }, { coins: 500, w: 6, c: '#ff4d8d' }, { coins: 1000, w: 2, c: '#ffffff' },
+      ],
+    },
+    chickenMult: (k, p) => (k === 0 ? 1 : Math.floor((0.97 / Math.pow(p, k)) * 100) / 100),
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = C; else root.GLINT = C;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -46,7 +46,7 @@ const me = u => api(u, '/api/me').then(r => r.j);
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
   await new Promise(r => mock.listen(TG_PORT, r));
-  const srv = spawn('node', ['index.js'], { cwd: __dirname + '/..', env: { ...process.env, PORT, BOT_TOKEN: TOKEN, TG_API: `http://127.0.0.1:${TG_PORT}`, PUBLIC_URL: BASE, ADMIN_ID: '1001' }, stdio: ['ignore', 'inherit', 'inherit'] });
+  const srv = spawn('node', ['index.js'], { cwd: __dirname + '/..', env: { ...process.env, PORT, BOT_TOKEN: TOKEN, TG_API: `http://127.0.0.1:${TG_PORT}`, PUBLIC_URL: BASE, ADMIN_ID: '1001', RATE_LIMIT: '100000' }, stdio: ['ignore', 'inherit', 'inherit'] });
   for (let i = 0; i < 50; i++) { try { await fetch(BASE + '/health'); break; } catch (e) { await new Promise(r => setTimeout(r, 200)); } }
   let passed = 0; const t = async (name, fn) => { await fn(); passed++; console.log('  ✓', name); };
   try {
@@ -148,6 +148,49 @@ const me = u => api(u, '/api/me').then(r => r.j);
       await hook(msg(A, '/stats')); assert.ok(sent.at(-1).text.includes('Игроков: 2'));
       await hook(msg(A, '/drop Regalia Gold | 3 | 3 | 1500 | 100 | 48')); assert.ok(sent.at(-1).text.includes('запущен'));
       assert.equal((await me(A)).drop.title, 'Regalia Gold');
+    });
+    await t('аркада: честные коэффициенты (возврат < 100%)', async () => {
+      const C = require('../../gifts/catalog.js'), comb = (n, k) => { let r = 1; for (let i = 1; i <= k; i++) r = r * (n - i + 1) / i; return r; };
+      for (const [k, tb] of Object.entries(C.ARCADE.PLINKO)) {
+        const ev = tb.reduce((s, m, i) => s + m * comb(10, i) / 1024, 0);
+        assert.ok(ev < 1 && ev > 0.95, `plinko ${k} ev=${ev}`);
+      }
+      for (const p of Object.values(C.ARCADE.CHICKEN.risk)) for (let s = 1; s <= 10; s++) assert.ok(Math.pow(p, s) * C.chickenMult(s, p) <= 0.97 + 1e-9);
+    });
+    await t('аркада: бонус и колесо раз в день', async () => {
+      let a = (await api(B, '/api/arcade')).j; assert.equal(a.coins, 500); assert.ok(a.bonusReady && a.wheelReady);
+      assert.equal((await api(B, '/api/arcade/bonus', {})).j.coins, 800);
+      assert.equal((await api(B, '/api/arcade/bonus', {})).status, 400);
+      const w = (await api(B, '/api/arcade/wheel', {})).j; assert.ok(w.got >= 25); assert.equal(w.coins, 800 + w.got);
+      assert.equal((await api(B, '/api/arcade/wheel', {})).status, 400);
+    });
+    await t('аркада: плинко — ставки, лимиты, выплаты', async () => {
+      assert.equal((await api(B, '/api/arcade/plinko', { bet: 5, risk: 'low' })).status, 400);
+      assert.equal((await api(B, '/api/arcade/plinko', { bet: 100, risk: 'nope' })).status, 400);
+      assert.equal((await api(B, '/api/arcade/plinko', { bet: 5000, risk: 'low' })).status, 402);
+      let bal = (await api(B, '/api/arcade')).j.coins;
+      for (let i = 0; i < 5; i++) {
+        const rr = await api(B, '/api/arcade/plinko', { bet: 20, risk: 'mid' }), r = rr.j; assert.equal(rr.status, 200, JSON.stringify(r));
+        assert.equal(r.path.length, 10); assert.equal(r.slot, r.path.reduce((s, x) => s + x, 0));
+        assert.equal(r.win, Math.floor(20 * r.mult)); assert.equal(r.coins, bal - 20 + r.win); bal = r.coins;
+      }
+      const rs = await Promise.all(Array.from({ length: 8 }, () => api(A, '/api/arcade/plinko', { bet: 100, risk: 'high' })));
+      assert.ok(rs.every(r => r.status === 200 || r.status === 402));
+      assert.ok((await api(A, '/api/arcade')).j.coins >= 0);
+    });
+    await t('аркада: курочка — шаги, вылет, забрать выигрыш', async () => {
+      const s = await api(B, '/api/arcade/chicken/start', { bet: 50, risk: 'easy' }); assert.equal(s.status, 200);
+      assert.equal((await api(B, '/api/arcade/chicken/start', { bet: 50, risk: 'easy' })).status, 400);
+      assert.equal((await api(B, '/api/arcade/chicken/cash', {})).status, 400);
+      let r = (await api(B, '/api/arcade/chicken/step', {})).j;
+      if (r.crashed) { assert.equal((await api(B, '/api/arcade/chicken/cash', {})).status, 400); }
+      else {
+        const before = (await api(B, '/api/arcade')).j.coins;
+        const cash = (await api(B, '/api/arcade/chicken/cash', {})).j;
+        assert.equal(cash.win, Math.floor(50 * r.mult)); assert.equal(cash.coins, before + cash.win);
+      }
+      assert.equal((await api(B, '/api/arcade')).j.chicken, null);
+      const top = (await api(B, '/api/arcade')).j.top; assert.ok(Array.isArray(top));
     });
     await t('журнал сходится с балансами', async () => {
       const r = await pool.query('SELECT u.id, u.balance, COALESCE(sum(l.delta),0) s FROM users u LEFT JOIN ledger l ON l.user_id = u.id GROUP BY u.id');

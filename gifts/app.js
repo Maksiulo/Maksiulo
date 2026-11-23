@@ -193,10 +193,14 @@
     },
   };
 
+  const G = window.GlintGames({ api, toast, notify, haptic, fmt, esc, $ });
+  screens.arcade = () => G.screen();
+
   /* ---------------- навигация ---------------- */
   async function render(t = tab, keepScroll) {
     tab = t;
     document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+    if (t === 'arcade' && !keepScroll) await G.enter();
     if (t === 'market' && !keepScroll) { try { MARKET = await api('/api/market?sort=' + ui.mf); } catch (e) { toast(e.message); } }
     const view = $('#view');
     view.innerHTML = screens[t]();
@@ -214,6 +218,7 @@
   /* ---------------- действия ---------------- */
   $('#view').addEventListener('click', e => {
     const el = e.target;
+    if (tab === 'arcade') return G.onClick(el);
     const go = el.closest('[data-go]'); if (go) return render(go.dataset.go);
     if (el.closest('#mintBtn')) return act(async () => { const r = await api('/api/drop/mint', {}); await refresh(); bump(); reveal(r.gift, 'Твой новый подарок'); render('home', true); });
     if (el.closest('#checkin')) return act(async () => {

@@ -62,6 +62,18 @@ CREATE TABLE IF NOT EXISTS ledger (
   at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ledger_user ON ledger(user_id, at DESC);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS coins BIGINT NOT NULL DEFAULT 500 CHECK (coins >= 0);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS coins_won BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS coins_bonus DATE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS wheel_day DATE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS arcade_xp JSONB NOT NULL DEFAULT '{}';
+CREATE TABLE IF NOT EXISTS chicken (
+  id TEXT PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id), bet BIGINT NOT NULL,
+  risk TEXT NOT NULL, step INT NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'live',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS chicken_live ON chicken(user_id) WHERE status = 'live';
+CREATE INDEX IF NOT EXISTS users_coins_won ON users(coins_won DESC);
 `;
 
 async function migrate() { await pool.query(SCHEMA); }
